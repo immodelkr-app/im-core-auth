@@ -38,6 +38,30 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ── CSS 커스텀 프로퍼티 (var() 참조용 — @theme 외부에서 사용 가능하도록) ── */
+:root {
+  /* 사이드바 */
+  --color-sidebar-bg:      #1e1040;
+  --color-sidebar-hover:   #2d1b69;
+  --color-sidebar-active:  #7c3aed;
+  --color-sidebar-border:  #3b1f7a;
+  --color-sidebar-text:    #c4b5fd;
+  --color-sidebar-muted:   #7c5cbf;
+
+  /* 표면 */
+  --color-surface:         #ffffff;
+  --color-surface-subtle:  #f8f7ff;
+  --color-surface-card:    #ffffff;
+  --color-surface-2:       #f3f0ff;
+
+  /* 텍스트 */
+  --color-text:            #1e1040;
+  --color-text-muted:      #6b7280;
+
+  /* 액센트 */
+  --color-accent:          #7c3aed;
+}
+
 /* ── 기본 리셋 ── */
 *, *::before, *::after {
   box-sizing: border-box;
