@@ -89,6 +89,24 @@ export interface UserCoupon {
 }
 
 // ============================================================
+// admin_announcements
+// ============================================================
+export interface AdminAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  target_app: string; // 'ALL' | AppName
+  is_active: boolean;
+  created_at: string;
+}
+
+export type AdminAnnouncementInsert = Omit<AdminAnnouncement, "id" | "created_at"> & {
+  id?: string;
+  is_active?: boolean;
+  created_at?: string;
+};
+
+// ============================================================
 // Supabase Database 타입 (createClient 제네릭용)
 // ============================================================
 export interface Database {
@@ -118,6 +136,11 @@ export interface Database {
         Row: UserCoupon;
         Insert: Omit<UserCoupon, "id" | "created_at"> & { id?: string };
         Update: Partial<UserCoupon>;
+      };
+      admin_announcements: {
+        Row: AdminAnnouncement;
+        Insert: AdminAnnouncementInsert;
+        Update: Partial<AdminAnnouncementInsert>;
       };
     };
   };

@@ -96,12 +96,20 @@ export default function CouponsAdminPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">쿠폰 관리</h1>
+          <h1 className="text-2xl font-bold text-gray-900">쿠폰 관리</h1>
           <p style={{ color: "var(--color-text-muted)" }} className="text-sm mt-1">
             쿠폰을 생성하고 발급 현황을 관리합니다.
           </p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => window.open("/api/admin/export?type=coupons", "_blank")}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+            style={{ backgroundColor: "rgba(16,185,129,0.12)", color: "#059669", border: "1px solid rgba(16,185,129,0.3)" }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            CSV 내보내기
+          </button>
           <button onClick={fetchData} disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:opacity-80 disabled:opacity-50"
             style={{ backgroundColor: "var(--color-surface-2)", color: "var(--color-text-secondary)" }}>
@@ -146,7 +154,7 @@ export default function CouponsAdminPage() {
       {/* 쿠폰 생성 폼 */}
       {showForm && (
         <div className="glass-card rounded-2xl p-6 border" style={{ borderColor: "rgba(139,92,246,0.3)" }}>
-          <h2 className="text-sm font-semibold text-white mb-5">새 쿠폰 생성</h2>
+          <h2 className="text-sm font-semibold text-gray-900 mb-5">새 쿠폰 생성</h2>
           <form onSubmit={handleCreate}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
@@ -203,7 +211,7 @@ export default function CouponsAdminPage() {
       {/* 쿠폰 목록 */}
       <div className="glass-card rounded-2xl overflow-hidden">
         <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--color-border)" }}>
-          <h2 className="text-sm font-semibold text-white">쿠폰 목록</h2>
+          <h2 className="text-sm font-semibold text-gray-900">쿠폰 목록</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

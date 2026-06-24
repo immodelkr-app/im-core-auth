@@ -107,7 +107,7 @@ export default function ImffAdminPage() {
               IMFF
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-white">IMFF 앱 연동 관리</h1>
+          <h1 className="text-2xl font-bold text-gray-900">IMFF 앱 연동 관리</h1>
           <p style={{ color: "var(--color-text-muted)" }} className="text-sm mt-1">
             IMFF 앱과 연동된 통합 회원의 현황을 확인하고 관리합니다.
           </p>
@@ -148,7 +148,7 @@ export default function ImffAdminPage() {
               </div>
               <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>총 연동 회원</span>
             </div>
-            <p className="text-3xl font-bold text-white">{stats.totalImff.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.totalImff.toLocaleString()}</p>
             <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>명</p>
           </div>
 
@@ -161,7 +161,7 @@ export default function ImffAdminPage() {
               </div>
               <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>오늘 신규 가입</span>
             </div>
-            <p className="text-3xl font-bold text-white">{stats.todayImff.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.todayImff.toLocaleString()}</p>
             <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>명 (오늘)</p>
           </div>
 
@@ -174,7 +174,7 @@ export default function ImffAdminPage() {
               </div>
               <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>IMFF 누적 적립</span>
             </div>
-            <p className="text-3xl font-bold text-white">{stats.totalEarned.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.totalEarned.toLocaleString()}</p>
             <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>P 지급</p>
           </div>
 
@@ -187,7 +187,7 @@ export default function ImffAdminPage() {
               </div>
               <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>IMFF 누적 사용</span>
             </div>
-            <p className="text-3xl font-bold text-white">{stats.totalSpent.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.totalSpent.toLocaleString()}</p>
             <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>P 차감</p>
           </div>
         </div>
@@ -202,7 +202,7 @@ export default function ImffAdminPage() {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white mb-2">IMFF 앱 연동 API 엔드포인트</p>
+            <p className="text-sm font-semibold text-gray-900 mb-2">IMFF 앱 연동 API 엔드포인트</p>
             <div className="grid gap-1.5">
               {[
                 { method: "POST", path: "/api/auth/sync", desc: "로그인 시 SSO 동기화" },
@@ -236,7 +236,7 @@ export default function ImffAdminPage() {
       <div className="glass-card rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--color-border)" }}>
           <div>
-            <h2 className="text-sm font-semibold text-white">IMFF 연동 회원 목록</h2>
+            <h2 className="text-sm font-semibold text-gray-900">IMFF 연동 회원 목록</h2>
             {lastUpdated && (
               <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
                 마지막 업데이트: {formatDatetime(lastUpdated.toISOString())}
@@ -312,10 +312,10 @@ export default function ImffAdminPage() {
                       {/* 닉네임 (IMFF 로그인 ID) */}
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium" style={{ color: "#c7d2fe" }}>
+                          <span className="text-sm font-medium" style={{ color: "#4338ca" }}>
                             {u.nickname || <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                           </span>
-                          <code className="text-[10px] mt-0.5 font-mono" style={{ color: "var(--color-text-muted)" }}>
+                          <code className="text-[10px] mt-0.5 font-mono" style={{ color: "#4b5563" }}>
                             {u.local_user_id.slice(0, 8)}…
                           </code>
                         </div>
@@ -367,8 +367,8 @@ export default function ImffAdminPage() {
           <div className="px-6 py-3 flex items-center justify-between"
             style={{ borderTop: "1px solid var(--color-border)", color: "var(--color-text-muted)" }}>
             <p className="text-xs">
-              전체 <span className="text-white font-semibold">{stats?.totalImff ?? 0}</span>명 중{" "}
-              <span className="text-white font-semibold">{filtered.length}</span>명 표시
+              전체 <span className="text-gray-900 font-semibold">{stats?.totalImff ?? 0}</span>명 중{" "}
+              <span className="text-gray-900 font-semibold">{filtered.length}</span>명 표시
             </p>
           </div>
         )}
