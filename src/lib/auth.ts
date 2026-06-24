@@ -25,6 +25,8 @@ export interface SyncMasterUserParams {
   name?: string;
   /** 앱 내 역할 (IMFF: participant|judge|admin|photographer) */
   role?: string;
+  /** 앱 내 닉네임 (로그인 ID로 사용되는 경우) */
+  nickname?: string;
 }
 
 /** syncAndGetMasterUser 반환값 */
@@ -94,7 +96,7 @@ function normalizePhoneNumber(phone: string): string {
 export async function syncAndGetMasterUser(
   params: SyncMasterUserParams
 ): Promise<SyncMasterUserResult> {
-  const { appName, localUserId, name, role } = params;
+  const { appName, localUserId, name, role, nickname } = params;
   const phoneNumber = normalizePhoneNumber(params.phoneNumber);
 
   // ── 입력 검증 ──────────────────────────────────────────────
@@ -161,7 +163,7 @@ export async function syncAndGetMasterUser(
 
   // ── STEP 3: 앱 매핑 upsert ──────────────────────────────────
   // 충돌 기준: (master_user_id, app_name) UNIQUE 제약
-  // 충돌 시 local_user_id를 최신값으로 갱신합니다.
+  // 충돌 시 local_user_id, role, nickname을 최신값으로 갱신합니다.
   const { error: upsertError } = await supabase
     .from("app_user_mapping")
     .upsert(
@@ -169,7 +171,8 @@ export async function syncAndGetMasterUser(
         master_user_id: masterUser.id,
         app_name: appName,
         local_user_id: localUserId,
-        ...(role !== undefined ? { role } : {}),  // role이 전달된 경우만 저장
+        ...(role     !== undefined ? { role }     : {}),  // role이 전달된 경우만 저장
+        ...(nickname !== undefined ? { nickname } : {}),  // nickname이 전달된 경우만 저장
       },
       {
         onConflict: "master_user_id,app_name",   // UNIQUE 제약 컬럼

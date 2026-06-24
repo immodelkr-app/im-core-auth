@@ -13,6 +13,7 @@ interface MasterUser {
 
 interface MocaUser {
   local_user_id: string;
+  nickname: string | null;
   created_at: string;
   grade: string | null;
   master_users: MasterUser | null;
@@ -91,6 +92,7 @@ export default function MocaAdminPage() {
     const q = search.toLowerCase();
     const mu = u.master_users;
     return (
+      (u.nickname ?? "").toLowerCase().includes(q) ||
       u.local_user_id.toLowerCase().includes(q) ||
       (mu?.phone_number ?? "").includes(q) ||
       (mu?.name ?? "").toLowerCase().includes(q)
@@ -306,7 +308,7 @@ export default function MocaAdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "rgba(255,255,255,0.02)" }}>
-                {["MOCA ID", "이름", "전화번호", "등급", "통합 포인트", "연동 일시"].map((h) => (
+                {["닉네임", "이름", "전화번호", "등급", "통합 포인트", "연동 일시"].map((h) => (
                   <th key={h} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider"
                     style={{ color: "var(--color-text-muted)" }}>
                     {h}
@@ -346,12 +348,16 @@ export default function MocaAdminPage() {
                       className="transition-colors duration-150 hover:bg-white/[0.03]"
                       style={{ borderBottom: "1px solid var(--color-border)" }}
                     >
-                      {/* MOCA ID */}
+                      {/* 닉네임 (MOCA 로그인 ID) */}
                       <td className="px-6 py-4">
-                        <code className="text-xs px-2 py-1 rounded-lg font-mono"
-                          style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#c4b5fd" }}>
-                          {u.local_user_id}
-                        </code>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium" style={{ color: "#e2d9fc" }}>
+                            {u.nickname || <span style={{ color: "var(--color-text-muted)" }}>—</span>}
+                          </span>
+                          <code className="text-[10px] mt-0.5 font-mono" style={{ color: "var(--color-text-muted)" }}>
+                            {u.local_user_id.slice(0, 8)}…
+                          </code>
+                        </div>
                       </td>
                       {/* 이름 */}
                       <td className="px-6 py-4" style={{ color: "var(--color-text-secondary)" }}>

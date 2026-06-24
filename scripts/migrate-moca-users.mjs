@@ -94,6 +94,7 @@ async function main() {
           appName: "MOCA",
           localUserId: user.id,           // MOCA의 UUID를 로컬 ID로 사용
           name: user.name ?? user.nickname ?? "",
+          nickname: user.nickname ?? "",  // MOCA 닉네임 (로그인 ID)
         }),
       });
 

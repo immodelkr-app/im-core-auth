@@ -15,6 +15,7 @@ export async function GET() {
     .from("app_user_mapping")
     .select(`
       local_user_id,
+      nickname,
       created_at,
       role,
       master_users (

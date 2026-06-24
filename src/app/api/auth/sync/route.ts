@@ -33,12 +33,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const { phoneNumber, appName, localUserId, name, role } = body as {
+  const { phoneNumber, appName, localUserId, name, role, nickname } = body as {
     phoneNumber?: string;
     appName?: string;
     localUserId?: string;
     name?: string;
     role?: string;
+    nickname?: string;
   };
 
   // ── 필수 필드 검증 ───────────────────────────────────────────
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
       localUserId,
       name,
       role,
+      nickname,
     });
 
     return NextResponse.json({ success: true, ...result }, { status: 200 });
