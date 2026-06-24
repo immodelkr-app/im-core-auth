@@ -37,6 +37,13 @@ export interface SyncMasterUserResult {
   integratedPoints: number;
   /** 이번 호출에서 마스터 계정이 신규 생성되었는지 여부 */
   isNewUser: boolean;
+  /**
+   * 이번 요청 앱(appName)을 제외하고 이미 연동된 앱 목록.
+   * isNewUser=false일 때 비어 있지 않을 수 있습니다.
+   * 예) IMFF 앱에서 회원가입 시 MOCA에 이미 가입된 경우 → ["MOCA"]
+   * 클라이언트 앱은 이 값을 이용해 "이미 OO 앱에 가입된 계정입니다" 안내를 표시하세요.
+   */
+  linkedApps: AppName[];
 }
 
 // ============================================================
@@ -120,6 +127,9 @@ export async function syncAndGetMasterUser(
     .eq("phone_number", phoneNumber)
     .maybeSingle();           // 결과 없으면 null, 여러 개면 에러
 
+  // 기존 유저가 있을 경우, 요청 앱 외에 이미 연동된 앱 목록을 조회합니다.
+  // 이 목록은 클라이언트 앱이 "이미 OO 앱에 가입된 계정" 안내 메시지를 표시할 때 사용됩니다.
+
   if (selectError) {
     throw new AuthError(
       `마스터 유저 조회 중 오류가 발생했습니다: ${selectError.message}`,
@@ -131,10 +141,21 @@ export async function syncAndGetMasterUser(
   // ── STEP 2: 신규 마스터 계정 생성 (없는 경우) ──────────────
   let masterUser: Pick<MasterUser, "id" | "integrated_points">;
   let isNewUser = false;
+  let linkedApps: AppName[] = [];
 
   if (existingUser) {
     // 기존 유저 — 조회 결과 그대로 사용
     masterUser = existingUser;
+
+    // 현재 요청 앱(appName)을 제외하고 이미 연동된 앱 목록 조회
+    // 클라이언트가 "이미 OO 앱에 가입된 계정입니다" 메시지를 표시하는 데 사용합니다.
+    const { data: existingMappings } = await supabase
+      .from("app_user_mapping")
+      .select("app_name")
+      .eq("master_user_id", existingUser.id)
+      .neq("app_name", appName);  // 현재 요청 앱은 제외
+
+    linkedApps = (existingMappings ?? []).map((m) => m.app_name as AppName);
   } else {
     // 신규 유저 생성
     const displayName = name?.trim() || maskPhoneNumber(phoneNumber);
@@ -159,6 +180,7 @@ export async function syncAndGetMasterUser(
 
     masterUser = createdUser;
     isNewUser = true;
+    linkedApps = [];  // 신규 유저는 연동 앱 없음
   }
 
   // ── STEP 3: 앱 매핑 upsert ──────────────────────────────────
@@ -193,6 +215,7 @@ export async function syncAndGetMasterUser(
     masterUserId: masterUser.id,
     integratedPoints: masterUser.integrated_points,
     isNewUser,
+    linkedApps,  // 이미 연동된 앱 목록 (요청 앱 제외). 방안 B 안내 메시지에 사용.
   };
 }
 
