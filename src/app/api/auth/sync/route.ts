@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateApiSecret } from "@/lib/api-auth";
-import { syncAndGetMasterUser } from "@/lib/auth";
+import { syncAndGetMasterUser, syncMasterUserShippingByPhone, updateMasterUserShipping } from "@/lib/auth";
 import type { AppName } from "@/types/database";
 
 /**
@@ -92,6 +92,99 @@ export async function POST(request: Request) {
     console.error("[POST /api/auth/sync]", message);
     return NextResponse.json(
       { success: false, error: message, code: "SYNC_FAILED" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/auth/sync
+ *
+ * MOCA·IMFF 앱에서 배송지 정보가 변경되었을 때, 
+ * 휴대폰 번호 또는 마스터 유저 ID를 활용하여 마스터 계정의 기본 배송지를 동기화 및 업데이트합니다.
+ *
+ * Request Headers:
+ *   x-api-secret: {API_SECRET_KEY}
+ *
+ * Request Body:
+ *   {
+ *     phoneNumber?: string,
+ *     masterUserId?: string,
+ *     shipping_recipient?: string | null,
+ *     shipping_phone?: string | null,
+ *     shipping_zipcode?: string | null,
+ *     shipping_address?: string | null,
+ *     shipping_detail?: string | null
+ *   }
+ */
+export async function PATCH(request: Request) {
+  // ── 인증 ────────────────────────────────────────────────────
+  const authError = validateApiSecret(request);
+  if (authError) return authError;
+
+  // ── 바디 파싱 ────────────────────────────────────────────────
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "유효하지 않은 JSON 형식", code: "INVALID_JSON" },
+      { status: 400 }
+    );
+  }
+
+  const {
+    phoneNumber,
+    masterUserId,
+    shipping_recipient,
+    shipping_phone,
+    shipping_zipcode,
+    shipping_address,
+    shipping_detail,
+  } = body as {
+    phoneNumber?: string;
+    masterUserId?: string;
+    shipping_recipient?: string | null;
+    shipping_phone?: string | null;
+    shipping_zipcode?: string | null;
+    shipping_address?: string | null;
+    shipping_detail?: string | null;
+  };
+
+  // ── 필수 식별 정보 검증 ───────────────────────────────────────
+  if (!phoneNumber && !masterUserId) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "phoneNumber 또는 masterUserId 중 하나는 필수입니다.",
+        code: "MISSING_IDENTIFIER",
+      },
+      { status: 400 }
+    );
+  }
+
+  try {
+    let updatedUser;
+    const shippingData = {
+      shipping_recipient,
+      shipping_phone,
+      shipping_zipcode,
+      shipping_address,
+      shipping_detail,
+    };
+
+    if (masterUserId) {
+      updatedUser = await updateMasterUserShipping(masterUserId, shippingData);
+    } else if (phoneNumber) {
+      updatedUser = await syncMasterUserShippingByPhone(phoneNumber, shippingData);
+    }
+
+    return NextResponse.json({ success: true, user: updatedUser }, { status: 200 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "알 수 없는 오류";
+    console.error("[PATCH /api/auth/sync]", message);
+    return NextResponse.json(
+      { success: false, error: message, code: "SYNC_PATCH_FAILED" },
       { status: 500 }
     );
   }

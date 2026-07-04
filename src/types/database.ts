@@ -22,11 +22,21 @@ export interface MasterUser {
   integrated_points: number;
   created_at: string;
   updated_at: string;
+  shipping_recipient: string | null;
+  shipping_phone: string | null;
+  shipping_zipcode: string | null;
+  shipping_address: string | null;
+  shipping_detail: string | null;
 }
 
 export type MasterUserInsert = Omit<MasterUser, "id" | "created_at" | "updated_at"> & {
   id?: string;
   integrated_points?: number;
+  shipping_recipient?: string | null;
+  shipping_phone?: string | null;
+  shipping_zipcode?: string | null;
+  shipping_address?: string | null;
+  shipping_detail?: string | null;
 };
 
 // ============================================================

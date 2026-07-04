@@ -259,3 +259,115 @@ export class AuthError extends Error {
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }
+
+// ============================================================
+// 기본 배송지 관련 추가 구현
+// ============================================================
+
+/** 마스터 유저 배송지 데이터 구조 */
+export interface ShippingData {
+  shipping_recipient?: string | null;
+  shipping_phone?: string | null;
+  shipping_zipcode?: string | null;
+  shipping_address?: string | null;
+  shipping_detail?: string | null;
+}
+
+/**
+ * ID로 마스터 유저 정보를 조회합니다.
+ */
+export async function getMasterUserById(id: string): Promise<MasterUser | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("master_users")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new AuthError(`마스터 유저 ID 조회 실패: ${error.message}`, "DB_SELECT_ERROR", error);
+  }
+  return data;
+}
+
+/**
+ * 휴대폰 번호로 마스터 유저 정보를 조회합니다.
+ */
+export async function getMasterUserByPhone(phone: string): Promise<MasterUser | null> {
+  const normalizedPhone = normalizePhoneNumber(phone);
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("master_users")
+    .select("*")
+    .eq("phone_number", normalizedPhone)
+    .maybeSingle();
+
+  if (error) {
+    throw new AuthError(`마스터 유저 휴대폰 번호 조회 실패: ${error.message}`, "DB_SELECT_ERROR", error);
+  }
+  return data;
+}
+
+/**
+ * ID 기준으로 마스터 유저의 배송지 정보를 업데이트합니다.
+ */
+export async function updateMasterUserShipping(
+  id: string,
+  shippingData: ShippingData
+): Promise<MasterUser> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("master_users")
+    .update({
+      ...shippingData,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new AuthError(
+      `배송지 업데이트 실패 (ID: ${id}): ${error?.message ?? "데이터 없음"}`,
+      "DB_UPSERT_ERROR",
+      error ?? undefined
+    );
+  }
+  return data;
+}
+
+/**
+ * 휴대폰 번호 기준으로 마스터 유저의 배송지 정보를 업데이트합니다.
+ */
+export async function syncMasterUserShippingByPhone(
+  phone: string,
+  shippingData: ShippingData
+): Promise<MasterUser> {
+  const normalizedPhone = normalizePhoneNumber(phone);
+  const supabase = createAdminClient();
+
+  // 기존 유저가 존재하는지 먼저 확인
+  const existingUser = await getMasterUserByPhone(normalizedPhone);
+  if (!existingUser) {
+    throw new AuthError(`일치하는 마스터 유저를 찾을 수 없습니다. (Phone: ${normalizedPhone})`, "DB_SELECT_ERROR");
+  }
+
+  const { data, error } = await supabase
+    .from("master_users")
+    .update({
+      ...shippingData,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("phone_number", normalizedPhone)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new AuthError(
+      `배송지 업데이트 실패 (Phone: ${normalizedPhone}): ${error?.message ?? "데이터 없음"}`,
+      "DB_UPSERT_ERROR",
+      error ?? undefined
+    );
+  }
+  return data;
+}
