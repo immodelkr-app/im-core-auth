@@ -3,9 +3,24 @@ import { updateSession } from "@/lib/supabase/proxy";
 import { createServerClient } from "@supabase/ssr";
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const origin = request.headers.get("origin") || "*";
+
+  // ── CORS OPTIONS (Preflight) 처리 ──────────────────────────
+  if (request.method === "OPTIONS" && pathname.startsWith("/api/")) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, x-api-secret, Authorization",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
+
   // ── 1. Supabase 세션 갱신 ──────────────────────────────────
   const response = await updateSession(request);
-  const { pathname } = request.nextUrl;
 
   // ── 2. /admin 경로 보호 (로그인 페이지 제외) ──────────────
   const isAdminRoute = pathname.startsWith("/admin");
@@ -52,6 +67,13 @@ export async function proxy(request: NextRequest) {
     if (user) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
+  }
+
+  // ── 4. CORS 헤더 추가 (API 요청인 경우) ───────────────────
+  if (pathname.startsWith("/api/")) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, x-api-secret, Authorization");
   }
 
   return response;

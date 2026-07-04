@@ -44,6 +44,11 @@ export interface SyncMasterUserResult {
    * 클라이언트 앱은 이 값을 이용해 "이미 OO 앱에 가입된 계정입니다" 안내를 표시하세요.
    */
   linkedApps: AppName[];
+  shipping_recipient?: string | null;
+  shipping_phone?: string | null;
+  shipping_zipcode?: string | null;
+  shipping_address?: string | null;
+  shipping_detail?: string | null;
 }
 
 // ============================================================
@@ -123,7 +128,7 @@ export async function syncAndGetMasterUser(
   // ── STEP 1: 기존 마스터 유저 조회 ──────────────────────────
   const { data: existingUser, error: selectError } = await supabase
     .from("master_users")
-    .select("id, integrated_points")
+    .select("id, integrated_points, shipping_recipient, shipping_phone, shipping_zipcode, shipping_address, shipping_detail")
     .eq("phone_number", phoneNumber)
     .maybeSingle();           // 결과 없으면 null, 여러 개면 에러
 
@@ -216,7 +221,94 @@ export async function syncAndGetMasterUser(
     integratedPoints: masterUser.integrated_points,
     isNewUser,
     linkedApps,  // 이미 연동된 앱 목록 (요청 앱 제외). 방안 B 안내 메시지에 사용.
+    shipping_recipient: (masterUser as any).shipping_recipient ?? null,
+    shipping_phone: (masterUser as any).shipping_phone ?? null,
+    shipping_zipcode: (masterUser as any).shipping_zipcode ?? null,
+    shipping_address: (masterUser as any).shipping_address ?? null,
+    shipping_detail: (masterUser as any).shipping_detail ?? null,
   };
+}
+
+// ============================================================
+// 신규 추가: 유저 정보 조회 및 업데이트 헬퍼
+// ============================================================
+
+/**
+ * masterUserId로 마스터 유저 상세 정보를 조회합니다.
+ */
+export async function getMasterUserById(id: string): Promise<MasterUser> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("master_users")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new AuthError(
+      `마스터 유저 조회 중 오류가 발생했습니다: ${error.message}`,
+      "DB_SELECT_ERROR",
+      error
+    );
+  }
+
+  if (!data) {
+    throw new AuthError(`해당 ID의 마스터 유저를 찾을 수 없습니다: ${id}`, "DB_SELECT_ERROR");
+  }
+
+  return data as MasterUser;
+}
+
+/**
+ * 휴대폰 번호로 마스터 유저 상세 정보를 조회합니다.
+ */
+export async function getMasterUserByPhone(phone: string): Promise<MasterUser | null> {
+  const normalized = normalizePhoneNumber(phone);
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("master_users")
+    .select("*")
+    .eq("phone_number", normalized)
+    .maybeSingle();
+
+  if (error) {
+    throw new AuthError(
+      `마스터 유저 조회 중 오류가 발생했습니다: ${error.message}`,
+      "DB_SELECT_ERROR",
+      error
+    );
+  }
+
+  return (data as MasterUser) || null;
+}
+
+/**
+ * 마스터 유저의 정보를 업데이트합니다 (이름, 주소 등).
+ */
+export async function updateMasterUser(
+  id: string,
+  updateFields: Partial<Omit<MasterUser, "id" | "created_at" | "updated_at">>
+): Promise<MasterUser> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("master_users")
+    .update({
+      ...updateFields,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new AuthError(
+      `마스터 유저 정보 업데이트 중 오류가 발생했습니다: ${error.message}`,
+      "DB_UPSERT_ERROR",
+      error
+    );
+  }
+
+  return data as MasterUser;
 }
 
 // ============================================================

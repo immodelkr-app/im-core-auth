@@ -96,3 +96,64 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function PATCH(request: Request) {
+  // ── 인증 ────────────────────────────────────────────────────
+  const authError = validateApiSecret(request);
+  if (authError) return authError;
+
+  // ── 바디 파싱 ────────────────────────────────────────────────
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "유효하지 않은 JSON 형식", code: "INVALID_JSON" },
+      { status: 400 }
+    );
+  }
+
+  const {
+    masterUserId,
+    shipping_recipient,
+    shipping_phone,
+    shipping_zipcode,
+    shipping_address,
+    shipping_detail,
+  } = body as {
+    masterUserId?: string;
+    shipping_recipient?: string | null;
+    shipping_phone?: string | null;
+    shipping_zipcode?: string | null;
+    shipping_address?: string | null;
+    shipping_detail?: string | null;
+  };
+
+  if (!masterUserId) {
+    return NextResponse.json(
+      { success: false, error: "masterUserId는 필수입니다.", code: "MISSING_FIELDS" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const { updateMasterUser } = await import("@/lib/auth");
+    const updatedUser = await updateMasterUser(masterUserId, {
+      ...(shipping_recipient !== undefined ? { shipping_recipient } : {}),
+      ...(shipping_phone !== undefined ? { shipping_phone } : {}),
+      ...(shipping_zipcode !== undefined ? { shipping_zipcode } : {}),
+      ...(shipping_address !== undefined ? { shipping_address } : {}),
+      ...(shipping_detail !== undefined ? { shipping_detail } : {}),
+    });
+
+    return NextResponse.json({ success: true, ...updatedUser }, { status: 200 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "알 수 없는 오류";
+    console.error("[PATCH /api/auth/sync]", message);
+    return NextResponse.json(
+      { success: false, error: message, code: "UPDATE_FAILED" },
+      { status: 500 }
+    );
+  }
+}
+
