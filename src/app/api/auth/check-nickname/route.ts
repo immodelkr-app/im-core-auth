@@ -5,17 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 /**
  * GET /api/auth/check-nickname?nickname=xxx
  *
- * 닉네임 사용 가능 여부 조회 (MOCA, IMFF, 모델뷰티 통합 체크)
- *
- * Request Headers:
- *   x-api-secret: {API_SECRET_KEY}
- *
- * Response:
- *   { available: true }  — 사용 가능
- *   { available: false } — 이미 사용 중
+ * 닉네임 사용 가능 여부 조회 (app_user_mapping 테이블의 nickname 기준)
  */
 export async function GET(request: NextRequest) {
-  // ── 인증 ────────────────────────────────────────────────────
   const authError = validateApiSecret(request);
   if (authError) return authError;
 
@@ -31,10 +23,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = createAdminClient();
+    // app_user_mapping 테이블에서 nickname 중복 여부 체크
     const { data, error } = await supabase
-      .from("master_users")
+      .from("app_user_mapping")
       .select("id")
-      .eq("name", nickname)
+      .eq("nickname", nickname)
       .maybeSingle();
 
     if (error) {

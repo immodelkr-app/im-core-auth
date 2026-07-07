@@ -6,19 +6,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * GET /api/auth/user/nickname/[nickname]
  *
  * 닉네임으로 마스터 유저 정보 조회 (로그인 시 phone_number 획득용)
- *
- * Request Headers:
- *   x-api-secret: {API_SECRET_KEY}
- *
- * Response:
- *   { found: true, masterUserId: string, phoneNumber: string }
- *   { found: false }
+ * 특정 앱에 한정하지 않고 전체 app_user_mapping에서 nickname이 일치하는 유저를 찾습니다.
+ * (이를 통해 MOCA 닉네임으로 MODEL_BEAUTY 로그인 가능)
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ nickname: string }> }
 ) {
-  // ── 인증 ────────────────────────────────────────────────────
   const authError = validateApiSecret(request);
   if (authError) return authError;
 
@@ -34,29 +28,51 @@ export async function GET(
 
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("master_users")
-      .select("id, phone_number")
-      .eq("name", decodedNickname)
+
+    // 1. app_user_mapping에서 nickname이 일치하는 매핑 조회
+    const { data: mapping, error: mappingError } = await supabase
+      .from("app_user_mapping")
+      .select("master_user_id")
+      .eq("nickname", decodedNickname)
+      .limit(1)
       .maybeSingle();
 
-    if (error) {
-      console.error("[GET /api/auth/user/nickname]", error);
+    if (mappingError) {
+      console.error("[GET /api/auth/user/nickname] app_user_mapping 조회 오류:", mappingError);
       return NextResponse.json(
         { found: false, error: "조회 중 오류가 발생했습니다." },
         { status: 500 }
       );
     }
 
-    if (!data) {
+    if (!mapping) {
+      return NextResponse.json({ found: false }, { status: 200 });
+    }
+
+    // 2. 연결된 master_users 테이블에서 id 및 phone_number 조회
+    const { data: masterUser, error: masterError } = await supabase
+      .from("master_users")
+      .select("id, phone_number")
+      .eq("id", mapping.master_user_id)
+      .maybeSingle();
+
+    if (masterError) {
+      console.error("[GET /api/auth/user/nickname] master_users 조회 오류:", masterError);
+      return NextResponse.json(
+        { found: false, error: "조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
+
+    if (!masterUser) {
       return NextResponse.json({ found: false }, { status: 200 });
     }
 
     return NextResponse.json(
       {
         found: true,
-        masterUserId: data.id,
-        phoneNumber: data.phone_number,
+        masterUserId: masterUser.id,
+        phoneNumber: masterUser.phone_number,
       },
       { status: 200 }
     );

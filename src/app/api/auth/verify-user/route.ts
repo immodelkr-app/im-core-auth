@@ -6,22 +6,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * POST /api/auth/verify-user
  *
  * 비밀번호 재설정 전 본인 확인 API
- * 닉네임 + 실명 + 휴대폰 번호가 모두 일치하는 경우 해당 앱의 localUserId를 반환합니다.
- *
- * Request Headers:
- *   x-api-secret: {API_SECRET_KEY}
- *
- * Request Body:
- *   { nickname: string, realName: string, phoneNumber: string, appName: "MODEL_BEAUTY" | "MOCA" | "IMFF" }
- *
- * Response (성공):
- *   { found: true, localUserId: string, masterUserId: string }
- *
- * Response (실패):
- *   { found: false, error?: string }
+ * 닉네임(app_user_mapping.nickname) + 실명(master_users.real_name 또는 name) + 휴대폰 번호가 모두 일치하는지 검증
  */
 export async function POST(request: NextRequest) {
-  // ── 인증 ────────────────────────────────────────────────────
   const authError = validateApiSecret(request);
   if (authError) return authError;
 
@@ -54,14 +41,31 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createAdminClient();
 
-    // 닉네임 + 실명 + 전화번호로 master_users 조회
-    const { data: masterUser, error: masterError } = await supabase
+    // 1. app_user_mapping에서 닉네임과 앱 이름으로 마스터 유저 ID 및 local_user_id 조회
+    const { data: mappings, error: mappingError } = await supabase
+      .from("app_user_mapping")
+      .select("master_user_id, local_user_id")
+      .eq("nickname", nickname.trim())
+      .eq("app_name", appName.trim());
+
+    if (mappingError) {
+      console.error("[POST /api/auth/verify-user] app_user_mapping 조회 오류:", mappingError);
+      return NextResponse.json(
+        { found: false, error: "조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
+
+    if (!mappings || mappings.length === 0) {
+      return NextResponse.json({ found: false, error: "일치하는 닉네임 정보가 없습니다." }, { status: 200 });
+    }
+
+    // 2. 검색된 master_user_id 들 중 실명과 전화번호가 일치하는 마스터 유저 검색
+    const masterUserIds = mappings.map(m => m.master_user_id);
+    const { data: masterUsers, error: masterError } = await supabase
       .from("master_users")
-      .select("id")
-      .eq("name", nickname.trim())
-      .eq("real_name", realName.trim())
-      .eq("phone_number", normalizedPhone)
-      .maybeSingle();
+      .select("id, name, real_name, phone_number")
+      .in("id", masterUserIds);
 
     if (masterError) {
       console.error("[POST /api/auth/verify-user] master_users 조회 오류:", masterError);
@@ -71,38 +75,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!masterUser) {
-      return NextResponse.json({ found: false }, { status: 200 });
+    const matchedMaster = masterUsers.find(m => {
+      const phoneMatch = m.phone_number.replace(/\D/g, "") === normalizedPhone;
+      
+      const cleanRealName = realName.trim();
+      const nameMatch = m.real_name === cleanRealName || (!m.real_name && m.name === cleanRealName);
+      
+      return phoneMatch && nameMatch;
+    });
+
+    if (!matchedMaster) {
+      return NextResponse.json({ found: false, error: "일치하는 회원 정보를 찾을 수 없습니다." }, { status: 200 });
     }
 
-    // app_user_mapping에서 해당 앱의 localUserId 조회
-    const { data: mapping, error: mappingError } = await supabase
-      .from("app_user_mapping")
-      .select("local_user_id")
-      .eq("master_user_id", masterUser.id)
-      .eq("app_name", appName.trim())
-      .maybeSingle();
-
-    if (mappingError) {
-      console.error("[POST /api/auth/verify-user] app_user_mapping 조회 오류:", mappingError);
-      return NextResponse.json(
-        { found: false, error: "앱 매핑 조회 중 오류가 발생했습니다." },
-        { status: 500 }
-      );
-    }
-
-    if (!mapping) {
-      return NextResponse.json(
-        { found: false, error: "해당 앱에 가입된 계정이 없습니다." },
-        { status: 200 }
-      );
-    }
+    const matchedMapping = mappings.find(m => m.master_user_id === matchedMaster.id);
 
     return NextResponse.json(
       {
         found: true,
-        localUserId: mapping.local_user_id,
-        masterUserId: masterUser.id,
+        localUserId: matchedMapping?.local_user_id,
+        masterUserId: matchedMaster.id,
       },
       { status: 200 }
     );
