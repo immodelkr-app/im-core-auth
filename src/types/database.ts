@@ -4,7 +4,7 @@
 // ============================================================
 
 /** 허용된 앱 식별자 */
-export type AppName = "MOCA" | "IMFF";
+export type AppName = "MOCA" | "IMFF" | "MODEL_BEAUTY";
 
 /** 포인트 거래 유형 */
 export type TransactionType = "earn" | "use";
@@ -19,6 +19,7 @@ export interface MasterUser {
   id: string;
   phone_number: string;
   name: string;
+  real_name?: string | null;
   integrated_points: number;
   created_at: string;
   updated_at: string;

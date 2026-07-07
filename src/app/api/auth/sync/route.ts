@@ -68,9 +68,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!["MOCA", "IMFF"].includes(appName)) {
+  if (!["MOCA", "IMFF", "MODEL_BEAUTY"].includes(appName)) {
     return NextResponse.json(
-      { success: false, error: "appName은 MOCA 또는 IMFF여야 합니다.", code: "INVALID_APP_NAME" },
+      { success: false, error: "appName은 MOCA, IMFF 또는 MODEL_BEAUTY여야 합니다.", code: "INVALID_APP_NAME" },
       { status: 400 }
     );
   }

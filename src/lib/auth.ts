@@ -1,7 +1,7 @@
 // ============================================================
 // IM-CORE-AUTH: SSO 핵심 인증 로직
 //
-// 역할: 타 앱(MOCA, IMFF)에서 로그인 시 중앙 시스템과 연동.
+// 역할: 타 앱(MOCA, IMFF, MODEL_BEAUTY)에서 로그인 시 중앙 시스템과 연동.
 //       휴대폰 번호를 기준으로 마스터 계정을 조회/생성하고
 //       앱별 유저 ID를 매핑합니다.
 // ============================================================
@@ -21,8 +21,10 @@ export interface SyncMasterUserParams {
   appName: AppName;
   /** 해당 앱 내에서 사용하는 유저 고유 ID */
   localUserId: string;
-  /** 신규 유저 생성 시 사용할 이름 (없으면 phoneNumber 앞 3자리+**** 마스킹 사용) */
+  /** 신규 유저 생성 시 사용할 닉네임 (없으면 phoneNumber 앞 3자리+**** 마스킹 사용) */
   name?: string;
+  /** 실명 (닉네임 찾기, 비밀번호 재설정 본인확인용) */
+  realName?: string;
   /** 앱 내 역할 (IMFF: participant|judge|admin|photographer) */
   role?: string;
   /** 앱 내 닉네임 (로그인 ID로 사용되는 경우) */
@@ -108,12 +110,18 @@ function normalizePhoneNumber(phone: string): string {
 export async function syncAndGetMasterUser(
   params: SyncMasterUserParams
 ): Promise<SyncMasterUserResult> {
-  const { appName, localUserId, name, role, nickname } = params;
+  const { appName, localUserId, name, realName, role, nickname } = params;
   const phoneNumber = normalizePhoneNumber(params.phoneNumber);
 
   // ── 입력 검증 ──────────────────────────────────────────────
   if (!phoneNumber) {
     throw new AuthError("phoneNumber는 필수입니다.", "INVALID_PHONE");
+  }
+  if (!["MOCA", "IMFF", "MODEL_BEAUTY"].includes(appName)) {
+    throw new AuthError(
+      `유효하지 않은 appName입니다: ${appName}. MOCA, IMFF, MODEL_BEAUTY 중 하나여야 합니다.`,
+      "UNKNOWN"
+    );
   }
   if (phoneNumber.length < 10 || phoneNumber.length > 11) {
     throw new AuthError(
@@ -170,6 +178,7 @@ export async function syncAndGetMasterUser(
       .insert({
         phone_number: phoneNumber,
         name: displayName,
+        real_name: realName?.trim() || null,
         integrated_points: 0,
       })
       .select("id, integrated_points")
@@ -186,6 +195,18 @@ export async function syncAndGetMasterUser(
     masterUser = createdUser;
     isNewUser = true;
     linkedApps = [];  // 신규 유저는 연동 앱 없음
+  }
+
+  // 기존 유저인데 real_name이 없으면 업데이트 (모델뷰티 가입 시 채우기)
+  if (!isNewUser && realName?.trim() && existingUser) {
+    // real_name이 null인지 확인 후 업데이트 (타입 안전을 위해 any 캐스팅)
+    const existingRealName = (existingUser as any).real_name;
+    if (!existingRealName) {
+      await supabase
+        .from("master_users")
+        .update({ real_name: realName.trim() })
+        .eq("id", existingUser.id);
+    }
   }
 
   // ── STEP 3: 앱 매핑 upsert ──────────────────────────────────
