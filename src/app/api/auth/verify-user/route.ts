@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * POST /api/auth/verify-user
  *
  * 비밀번호 재설정 전 본인 확인 API
- * 닉네임(app_user_mapping.nickname) + 실명(master_users.real_name 또는 name) + 휴대폰 번호가 모두 일치하는지 검증
+ * 닉네임(모든 앱 매핑 중 일치하는 nickname) + 실명(master_users.real_name 또는 name) + 휴대폰 번호가 모두 일치하는지 검증
  */
 export async function POST(request: NextRequest) {
   const authError = validateApiSecret(request);
@@ -41,12 +41,12 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createAdminClient();
 
-    // 1. app_user_mapping에서 닉네임과 앱 이름으로 마스터 유저 ID 및 local_user_id 조회
+    // 1. 전체 app_user_mapping에서 입력받은 닉네임과 일치하는 매핑들을 조회
+    // (MOCA나 IMFF 등 다른 앱에 닉네임이 설정되어 있어도 검색이 가능하도록 함)
     const { data: mappings, error: mappingError } = await supabase
       .from("app_user_mapping")
-      .select("master_user_id, local_user_id")
-      .eq("nickname", nickname.trim())
-      .eq("app_name", appName.trim());
+      .select("master_user_id, local_user_id, app_name")
+      .eq("nickname", nickname.trim());
 
     if (mappingError) {
       console.error("[POST /api/auth/verify-user] app_user_mapping 조회 오류:", mappingError);
@@ -88,12 +88,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ found: false, error: "일치하는 회원 정보를 찾을 수 없습니다." }, { status: 200 });
     }
 
-    const matchedMapping = mappings.find(m => m.master_user_id === matchedMaster.id);
+    // 3. 해당 마스터 유저가 요청된 앱(appName: 예: MODEL_BEAUTY)에 매핑되어 있는지 확인
+    // 기존에 매핑은 있었으나 nickname이 null이었던 계정일 수 있으므로 다시 테이블을 조회
+    const { data: targetMapping, error: targetMappingError } = await supabase
+      .from("app_user_mapping")
+      .select("local_user_id, nickname")
+      .eq("master_user_id", matchedMaster.id)
+      .eq("app_name", appName.trim())
+      .maybeSingle();
+
+    if (targetMappingError) {
+      console.error("[POST /api/auth/verify-user] target app mapping 조회 오류:", targetMappingError);
+      return NextResponse.json(
+        { found: false, error: "매핑 조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
+
+    if (!targetMapping) {
+      return NextResponse.json(
+        { found: false, error: `${appName} 앱에 연동된 계정 정보를 찾을 수 없습니다.` },
+        { status: 200 }
+      );
+    }
+
+    // 4. 모델뷰티 앱 매핑의 nickname 컬럼이 비어있다면, 
+    // 본인인증이 완료된 김에 자동으로 사용자의 닉네임("김대표")을 채워줍니다.
+    if (!targetMapping.nickname) {
+      const { error: updateNickError } = await supabase
+        .from("app_user_mapping")
+        .update({ nickname: nickname.trim() })
+        .eq("master_user_id", matchedMaster.id)
+        .eq("app_name", appName.trim());
+
+      if (updateNickError) {
+        console.warn("[POST /api/auth/verify-user] 닉네임 자동 업데이트 실패:", updateNickError);
+      }
+    }
 
     return NextResponse.json(
       {
         found: true,
-        localUserId: matchedMapping?.local_user_id,
+        localUserId: targetMapping.local_user_id,
         masterUserId: matchedMaster.id,
       },
       { status: 200 }
