@@ -239,6 +239,30 @@ export async function syncAndGetMasterUser(
     );
   }
 
+  // ── STEP 3.5: IMFF 유저인 경우 MODEL_BEAUTY로 자동 유입 (매핑 자동 생성) ────
+  if (appName === "IMFF") {
+    const { error: mbUpsertError } = await supabase
+      .from("app_user_mapping")
+      .upsert(
+        {
+          master_user_id: masterUser.id,
+          app_name: "MODEL_BEAUTY",
+          local_user_id: localUserId, // IMFF 로컬 ID와 동일하게 설정하여 모델뷰티로 유입
+          ...(nickname !== undefined ? { nickname } : {}),
+        },
+        {
+          onConflict: "master_user_id,app_name",
+          ignoreDuplicates: true, // 이미 모델뷰티 매핑이 있으면 덮어쓰지 않고 무시
+        }
+      );
+
+    if (mbUpsertError) {
+      console.warn(
+        `[syncAndGetMasterUser] MODEL_BEAUTY 자동 유입 매핑 중 오류가 발생했으나 무시하고 진행합니다: ${mbUpsertError.message}`
+      );
+    }
+  }
+
   // ── STEP 4: 결과 반환 ───────────────────────────────────────
   return {
     masterUserId: masterUser.id,
