@@ -131,6 +131,9 @@ export async function POST(request: NextRequest) {
         found: true,
         localUserId: targetMapping.local_user_id,
         masterUserId: matchedMaster.id,
+        phoneNumber: matchedMaster.phone_number, // 가상 이메일 복원을 위해 전화번호 반환 추가
+        nickname: nickname.trim(), // 닉네임 전달 추가
+        realName: matchedMaster.real_name || matchedMaster.name, // 실명 전달 추가
       },
       { status: 200 }
     );

@@ -51,6 +51,9 @@ export interface SyncMasterUserResult {
   shipping_zipcode?: string | null;
   shipping_address?: string | null;
   shipping_detail?: string | null;
+  grade?: string;
+  grade_locked?: boolean;
+  grade_locked_reason?: string | null;
 }
 
 // ============================================================
@@ -136,7 +139,7 @@ export async function syncAndGetMasterUser(
   // ── STEP 1: 기존 마스터 유저 조회 ──────────────────────────
   const { data: existingUser, error: selectError } = await supabase
     .from("master_users")
-    .select("id, integrated_points, shipping_recipient, shipping_phone, shipping_zipcode, shipping_address, shipping_detail")
+    .select("id, integrated_points, shipping_recipient, shipping_phone, shipping_zipcode, shipping_address, shipping_detail, grade, grade_locked, grade_locked_reason")
     .eq("phone_number", phoneNumber)
     .maybeSingle();           // 결과 없으면 null, 여러 개면 에러
 
@@ -152,7 +155,7 @@ export async function syncAndGetMasterUser(
   }
 
   // ── STEP 2: 신규 마스터 계정 생성 (없는 경우) ──────────────
-  let masterUser: Pick<MasterUser, "id" | "integrated_points">;
+  let masterUser: Pick<MasterUser, "id" | "integrated_points" | "grade" | "grade_locked" | "grade_locked_reason">;
   let isNewUser = false;
   let linkedApps: AppName[] = [];
 
@@ -181,7 +184,7 @@ export async function syncAndGetMasterUser(
         real_name: realName?.trim() || null,
         integrated_points: 0,
       })
-      .select("id, integrated_points")
+      .select("id, integrated_points, grade, grade_locked, grade_locked_reason")
       .single();
 
     if (insertError || !createdUser) {
@@ -247,6 +250,9 @@ export async function syncAndGetMasterUser(
     shipping_zipcode: (masterUser as any).shipping_zipcode ?? null,
     shipping_address: (masterUser as any).shipping_address ?? null,
     shipping_detail: (masterUser as any).shipping_detail ?? null,
+    grade: masterUser.grade ?? "NORMAL",
+    grade_locked: masterUser.grade_locked ?? false,
+    grade_locked_reason: masterUser.grade_locked_reason ?? null,
   };
 }
 

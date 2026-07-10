@@ -67,6 +67,9 @@ export async function PATCH(
     shipping_zipcode,
     shipping_address,
     shipping_detail,
+    grade,
+    grade_locked,
+    grade_locked_reason,
   } = body as {
     name?: string;
     shipping_recipient?: string | null;
@@ -74,6 +77,9 @@ export async function PATCH(
     shipping_zipcode?: string | null;
     shipping_address?: string | null;
     shipping_detail?: string | null;
+    grade?: string;
+    grade_locked?: boolean;
+    grade_locked_reason?: string | null;
   };
 
   try {
@@ -84,6 +90,9 @@ export async function PATCH(
       ...(shipping_zipcode !== undefined ? { shipping_zipcode } : {}),
       ...(shipping_address !== undefined ? { shipping_address } : {}),
       ...(shipping_detail !== undefined ? { shipping_detail } : {}),
+      ...(grade !== undefined ? { grade } : {}),
+      ...(grade_locked !== undefined ? { grade_locked } : {}),
+      ...(grade_locked_reason !== undefined ? { grade_locked_reason } : {}),
     });
 
     return NextResponse.json({ success: true, ...updatedUser }, { status: 200 });

@@ -21,6 +21,9 @@ export interface MasterUser {
   name: string;
   real_name?: string | null;
   integrated_points: number;
+  grade: string;
+  grade_locked: boolean;
+  grade_locked_reason?: string | null;
   created_at: string;
   updated_at: string;
   shipping_recipient?: string | null;
@@ -33,6 +36,9 @@ export interface MasterUser {
 export type MasterUserInsert = Omit<MasterUser, "id" | "created_at" | "updated_at"> & {
   id?: string;
   integrated_points?: number;
+  grade?: string;
+  grade_locked?: boolean;
+  grade_locked_reason?: string | null;
   shipping_recipient?: string | null;
   shipping_phone?: string | null;
   shipping_zipcode?: string | null;
