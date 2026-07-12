@@ -13,7 +13,7 @@ import type { AppName } from "@/types/database";
  *   x-api-secret: {API_SECRET_KEY}
  *
  * Request Body:
- *   { masterUserId: string, appSource: "MOCA"|"IMFF", amount: number, description?: string }
+ *   { masterUserId: string, appSource: "MOCA"|"IMFF"|"MODEL_BEAUTY", amount: number, description?: string }
  *
  * Response:
  *   { success: true, transactionId: string, newBalance: number }
@@ -46,9 +46,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!["MOCA", "IMFF"].includes(appSource)) {
+  if (!["MOCA", "IMFF", "MODEL_BEAUTY"].includes(appSource)) {
     return NextResponse.json(
-      { success: false, error: "appSource는 MOCA 또는 IMFF여야 합니다.", code: "INVALID_APP_SOURCE" },
+      { success: false, error: "appSource는 MOCA, IMFF 또는 MODEL_BEAUTY여야 합니다.", code: "INVALID_APP_SOURCE" },
       { status: 400 }
     );
   }
