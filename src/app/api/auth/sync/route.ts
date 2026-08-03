@@ -8,6 +8,10 @@ import type { AppName } from "@/types/database";
  *
  * MOCA·IMFF 앱에서 로그인 또는 회원가입 시 마스터 계정과 동기화합니다.
  *
+ * 📌 모델뷰티(MODEL_BEAUTY) 정책:
+ *   모델뷰티 회원은 이 엔드포인트를 직접 호출하지 않습니다.
+ *   MOCA 또는 IMFF 로그인 시 서버가 자동으로 MODEL_BEAUTY 매핑을 생성합니다.
+ *
  * Request Headers:
  *   x-api-secret: {API_SECRET_KEY}
  *
@@ -23,7 +27,7 @@ import type { AppName } from "@/types/database";
  *     linkedApps: string[]   // 요청 앱 외에 이미 연동된 앱 목록 (방안 B 안내 메시지용)
  *   }
  *
- * ─── 클라이언트 앱 메시지 처리 가이드 ────────────────────────────
+ * ─── 클라이언트 앱 메시지 처리 가이드 ──────────────────────────────────────
  *  isNewUser = true  → 신규 가입 완료 메시지 표시
  *  isNewUser = false, linkedApps = []        → 기존 동일 앱 재로그인 (별도 안내 불필요)
  *  isNewUser = false, linkedApps = ["MOCA"]  → 아래 안내 메시지 표시:
@@ -47,13 +51,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const { phoneNumber, appName, localUserId, name, role, nickname } = body as {
+  const { phoneNumber, appName, localUserId, name, role, nickname, grade } = body as {
     phoneNumber?: string;
     appName?: string;
     localUserId?: string;
     name?: string;
     role?: string;
     nickname?: string;
+    grade?: string;
   };
 
   // ── 필수 필드 검증 ───────────────────────────────────────────
@@ -68,9 +73,14 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!["MOCA", "IMFF", "MODEL_BEAUTY"].includes(appName)) {
+  // MODEL_BEAUTY 직접 호출 차단: MOCA/IMFF 로그인 시 자동으로 유입됩니다.
+  if (!["MOCA", "IMFF"].includes(appName)) {
     return NextResponse.json(
-      { success: false, error: "appName은 MOCA, IMFF 또는 MODEL_BEAUTY여야 합니다.", code: "INVALID_APP_NAME" },
+      {
+        success: false,
+        error: "appName은 MOCA 또는 IMFF 여야 합니다. 모델뷰티 회원은 MOCA/IMFF 로그인 시 자동으로 유입됩니다.",
+        code: "INVALID_APP_NAME",
+      },
       { status: 400 }
     );
   }
@@ -84,6 +94,7 @@ export async function POST(request: Request) {
       name,
       role,
       nickname,
+      grade,
     });
 
     return NextResponse.json({ success: true, ...result }, { status: 200 });

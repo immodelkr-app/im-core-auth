@@ -341,7 +341,8 @@ export default function MocaAdminPage() {
                 </tr>
               ) : (
                 filtered.map((u, idx) => {
-                  const mu = u.master_users;
+                  const mu = Array.isArray(u.master_users) ? u.master_users[0] : u.master_users;
+                  const displayNickname = u.nickname || mu?.name;
                   return (
                     <tr
                       key={`${u.local_user_id}-${idx}`}
@@ -352,7 +353,7 @@ export default function MocaAdminPage() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span className="text-sm font-medium" style={{ color: "#5b21b6" }}>
-                            {u.nickname || <span style={{ color: "var(--color-text-muted)" }}>—</span>}
+                            {displayNickname || <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                           </span>
                           <code className="text-[10px] mt-0.5 font-mono" style={{ color: "#4b5563" }}>
                             {u.local_user_id.slice(0, 8)}…

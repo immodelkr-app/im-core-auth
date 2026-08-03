@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createMocaClient } from "@/lib/supabase/moca";
 
 /**
  * GET /api/admin/moca
  *
  * 어드민 전용: MOCA 앱 연동 회원 목록 + 통계 반환
- * 등급(grade)은 MOCA 앱 Supabase DB에서 실시간 조회합니다.
- * (등급 권한은 MOCA 앱에 있으므로 im-core-auth에 복사하지 않음)
+ * MOCA 앱에서 로그인/등급변경 시 sync 및 grade-update를 통해 마스터 계정 DB에 등급이 동기화됩니다.
  */
 export async function GET() {
-  const supabase     = createAdminClient();
-  const mocaSupabase = createMocaClient();
+  const supabase = createAdminClient();
 
   // ── MOCA 연동 회원 목록 (im-core-auth DB) ─────────────────────
   const { data: users, error: usersError } = await supabase
@@ -24,6 +21,7 @@ export async function GET() {
         id,
         phone_number,
         name,
+        grade,
         integrated_points,
         created_at
       )
@@ -36,27 +34,22 @@ export async function GET() {
     return NextResponse.json({ success: false, error: usersError.message }, { status: 500 });
   }
 
-  // ── MOCA DB에서 등급 실시간 조회 ─────────────────────────────
-  // local_user_id = MOCA users 테이블의 id (UUID)
-  const localIds = (users ?? []).map((u) => u.local_user_id);
-  let gradeMap: Record<string, string | null> = {};
+  // ── grade 및 nickname 병합 ───────────────────────────────────────
+  const usersWithGrade = (users ?? []).map((u) => {
+    const masterObj = Array.isArray(u.master_users)
+      ? u.master_users[0]
+      : (u.master_users as { name?: string; phone_number?: string; grade?: string } | null);
 
-  if (localIds.length > 0) {
-    const { data: mocaUsers } = await mocaSupabase
-      .from("users")
-      .select("id, grade")
-      .in("id", localIds);
+    const masterName = masterObj?.name ?? null;
+    const fallbackNickname = u.nickname || masterName || null;
 
-    if (mocaUsers) {
-      gradeMap = Object.fromEntries(mocaUsers.map((u) => [u.id, u.grade ?? null]));
-    }
-  }
-
-  // ── grade 필드 병합 ───────────────────────────────────────────
-  const usersWithGrade = (users ?? []).map((u) => ({
-    ...u,
-    grade: gradeMap[u.local_user_id] ?? null,
-  }));
+    return {
+      ...u,
+      nickname: fallbackNickname,
+      grade: masterObj?.grade ?? "NORMAL",
+      master_users: masterObj ?? u.master_users,
+    };
+  });
 
   // ── MOCA 통계 ────────────────────────────────────────────────
   const { count: totalMoca } = await supabase

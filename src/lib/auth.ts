@@ -1,9 +1,13 @@
 // ============================================================
 // IM-CORE-AUTH: SSO 핵심 인증 로직
 //
-// 역할: 타 앱(MOCA, IMFF, MODEL_BEAUTY)에서 로그인 시 중앙 시스템과 연동.
+// 역할: MOCA, IMFF에서 로그인 시 중앙 시스템과 연동.
 //       휴대폰 번호를 기준으로 마스터 계정을 조회/생성하고
 //       앱별 유저 ID를 매핑합니다.
+//
+// 📌 모델뷰티(MODEL_BEAUTY) 정책:
+//       MOCA 또는 IMFF 로그인 시 MODEL_BEAUTY 매핑이 자동 생성됩니다.
+//       MODEL_BEAUTY는 직접 가입 경로가 없으며, 항상 MOCA/IMFF를 통해서만 유입됩니다.
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -29,6 +33,8 @@ export interface SyncMasterUserParams {
   role?: string;
   /** 앱 내 닉네임 (로그인 ID로 사용되는 경우) */
   nickname?: string;
+  /** 회원 등급 (NORMAL, SILVER, GOLD, IMODEL, VIP) */
+  grade?: string;
 }
 
 /** syncAndGetMasterUser 반환값 */
@@ -113,16 +119,17 @@ function normalizePhoneNumber(phone: string): string {
 export async function syncAndGetMasterUser(
   params: SyncMasterUserParams
 ): Promise<SyncMasterUserResult> {
-  const { appName, localUserId, name, realName, role, nickname } = params;
+  const { appName, localUserId, name, realName, role, nickname, grade } = params;
   const phoneNumber = normalizePhoneNumber(params.phoneNumber);
 
   // ── 입력 검증 ──────────────────────────────────────────────
   if (!phoneNumber) {
     throw new AuthError("phoneNumber는 필수입니다.", "INVALID_PHONE");
   }
-  if (!["MOCA", "IMFF", "MODEL_BEAUTY"].includes(appName)) {
+  // MODEL_BEAUTY는 직접 진입 불가 — MOCA/IMFF 로그인 시 자동 유입됩니다.
+  if (!["MOCA", "IMFF"].includes(appName)) {
     throw new AuthError(
-      `유효하지 않은 appName입니다: ${appName}. MOCA, IMFF, MODEL_BEAUTY 중 하나여야 합니다.`,
+      `유효하지 않은 appName입니다: ${appName}. MOCA 또는 IMFF 여야 합니다. 모델뷰티 회원은 MOCA/IMFF 로그인 시 자동으로 유입됩니다.`,
       "UNKNOWN"
     );
   }
@@ -159,6 +166,9 @@ export async function syncAndGetMasterUser(
   let isNewUser = false;
   let linkedApps: AppName[] = [];
 
+  const validGrades = ["NORMAL", "SILVER", "GOLD", "IMODEL", "VIP"];
+  const formattedGrade = grade && validGrades.includes(grade.toUpperCase()) ? grade.toUpperCase() : undefined;
+
   if (existingUser) {
     // 기존 유저 — 조회 결과 그대로 사용
     masterUser = existingUser;
@@ -172,6 +182,15 @@ export async function syncAndGetMasterUser(
       .neq("app_name", appName);  // 현재 요청 앱은 제외
 
     linkedApps = (existingMappings ?? []).map((m) => m.app_name as AppName);
+
+    // 등급 업데이트 (grade가 전달되었고 grade_locked가 false인 경우)
+    if (formattedGrade && !existingUser.grade_locked) {
+      await supabase
+        .from("master_users")
+        .update({ grade: formattedGrade })
+        .eq("id", existingUser.id);
+      masterUser.grade = formattedGrade;
+    }
   } else {
     // 신규 유저 생성
     const displayName = name?.trim() || maskPhoneNumber(phoneNumber);
@@ -183,6 +202,7 @@ export async function syncAndGetMasterUser(
         name: displayName,
         real_name: realName?.trim() || null,
         integrated_points: 0,
+        ...(formattedGrade ? { grade: formattedGrade } : {}),
       })
       .select("id, integrated_points, grade, grade_locked, grade_locked_reason")
       .single();
@@ -239,15 +259,17 @@ export async function syncAndGetMasterUser(
     );
   }
 
-  // ── STEP 3.5: IMFF 유저인 경우 MODEL_BEAUTY로 자동 유입 (매핑 자동 생성) ────
-  if (appName === "IMFF") {
+  // ── STEP 3.5: MOCA/IMFF 유저는 MODEL_BEAUTY로 자동 유입 (매핑 자동 생성) ────
+  // 📌 정책: 모델뷰티 회원은 자체 가입 경로 없이 MOCA 또는 IMFF 로그인 시에만 자동 유입됩니다.
+  //         이미 MODEL_BEAUTY 매핑이 존재하는 경우 덮어쓰지 않고 무시합니다 (ignoreDuplicates: true).
+  if (appName === "MOCA" || appName === "IMFF") {
     const { error: mbUpsertError } = await supabase
       .from("app_user_mapping")
       .upsert(
         {
           master_user_id: masterUser.id,
           app_name: "MODEL_BEAUTY",
-          local_user_id: localUserId, // IMFF 로컬 ID와 동일하게 설정하여 모델뷰티로 유입
+          local_user_id: localUserId, // 해당 앱의 로컬 ID와 동일하게 설정하여 모델뷰티로 유입
           ...(nickname !== undefined ? { nickname } : {}),
         },
         {
