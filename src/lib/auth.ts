@@ -1,13 +1,13 @@
 // ============================================================
 // IM-CORE-AUTH: SSO 핵심 인증 로직
 //
-// 역할: MOCA, IMFF에서 로그인 시 중앙 시스템과 연동.
+// 역할: MOCA, IMFF, MODEL_BEAUTY에서 로그인 시 중앙 시스템과 연동.
 //       휴대폰 번호를 기준으로 마스터 계정을 조회/생성하고
 //       앱별 유저 ID를 매핑합니다.
 //
 // 📌 모델뷰티(MODEL_BEAUTY) 정책:
-//       MOCA 또는 IMFF 로그인 시 MODEL_BEAUTY 매핑이 자동 생성됩니다.
-//       MODEL_BEAUTY는 직접 가입 경로가 없으며, 항상 MOCA/IMFF를 통해서만 유입됩니다.
+//       모델뷰티는 자체 휴대폰 가입/로그인이 주력이라 이 엔드포인트를 직접 호출합니다.
+//       (MOCA/IMFF 로그인 시에는 별도로 MODEL_BEAUTY 매핑이 자동 생성됩니다.)
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -126,10 +126,9 @@ export async function syncAndGetMasterUser(
   if (!phoneNumber) {
     throw new AuthError("phoneNumber는 필수입니다.", "INVALID_PHONE");
   }
-  // MODEL_BEAUTY는 직접 진입 불가 — MOCA/IMFF 로그인 시 자동 유입됩니다.
-  if (!["MOCA", "IMFF"].includes(appName)) {
+  if (!["MOCA", "IMFF", "MODEL_BEAUTY"].includes(appName)) {
     throw new AuthError(
-      `유효하지 않은 appName입니다: ${appName}. MOCA 또는 IMFF 여야 합니다. 모델뷰티 회원은 MOCA/IMFF 로그인 시 자동으로 유입됩니다.`,
+      `유효하지 않은 appName입니다: ${appName}. MOCA, IMFF 또는 MODEL_BEAUTY여야 합니다.`,
       "UNKNOWN"
     );
   }

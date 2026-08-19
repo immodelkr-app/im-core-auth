@@ -6,17 +6,18 @@ import type { AppName } from "@/types/database";
 /**
  * POST /api/auth/sync
  *
- * MOCA·IMFF 앱에서 로그인 또는 회원가입 시 마스터 계정과 동기화합니다.
+ * MOCA·IMFF·MODEL_BEAUTY 앱에서 로그인 또는 회원가입 시 마스터 계정과 동기화합니다.
  *
  * 📌 모델뷰티(MODEL_BEAUTY) 정책:
- *   모델뷰티 회원은 이 엔드포인트를 직접 호출하지 않습니다.
- *   MOCA 또는 IMFF 로그인 시 서버가 자동으로 MODEL_BEAUTY 매핑을 생성합니다.
+ *   모델뷰티는 자체 휴대폰 가입/로그인이 주력이라 이 엔드포인트를 직접 호출합니다.
+ *   (2026-08-03 f0dfae8에서 한 차례 차단했다가, model_beauty의 /api/auth/me·signup이
+ *    여전히 이 엔드포인트에 의존하고 있어 회원 동기화가 전면 실패했음을 확인하고 복원.)
  *
  * Request Headers:
  *   x-api-secret: {API_SECRET_KEY}
  *
  * Request Body:
- *   { phoneNumber: string, appName: "MOCA"|"IMFF", localUserId: string, name?: string }
+ *   { phoneNumber: string, appName: "MOCA"|"IMFF"|"MODEL_BEAUTY", localUserId: string, name?: string }
  *
  * Response:
  *   {
@@ -73,12 +74,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // MODEL_BEAUTY 직접 호출 차단: MOCA/IMFF 로그인 시 자동으로 유입됩니다.
-  if (!["MOCA", "IMFF"].includes(appName)) {
+  if (!["MOCA", "IMFF", "MODEL_BEAUTY"].includes(appName)) {
     return NextResponse.json(
       {
         success: false,
-        error: "appName은 MOCA 또는 IMFF 여야 합니다. 모델뷰티 회원은 MOCA/IMFF 로그인 시 자동으로 유입됩니다.",
+        error: "appName은 MOCA, IMFF 또는 MODEL_BEAUTY여야 합니다.",
         code: "INVALID_APP_NAME",
       },
       { status: 400 }
