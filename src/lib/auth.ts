@@ -282,6 +282,25 @@ export async function syncAndGetMasterUser(
         `[syncAndGetMasterUser] MODEL_BEAUTY 자동 유입 매핑 중 오류가 발생했으나 무시하고 진행합니다: ${mbUpsertError.message}`
       );
     }
+
+    // 이미 MODEL_BEAUTY 매핑이 있었다면 위 upsert는 ignoreDuplicates로 인해 아무것도 갱신하지 않는다.
+    // 그 매핑이 처음 자동 생성될 당시 nickname 없이 만들어졌다면(예: 로그인 세션 갱신 호출) 계속 비어있는 채로
+    // 남아, 모델뷰티에서 닉네임/비밀번호 찾기가 그 사람을 찾지 못하는 문제로 이어진다.
+    // nickname이 비어있는 경우에 한해 지금 값으로 보정한다(local_user_id는 여전히 미접속 상태이므로 건드리지 않음).
+    if (nickname !== undefined && nickname !== null) {
+      const { error: nicknameBackfillError } = await supabase
+        .from("app_user_mapping")
+        .update({ nickname })
+        .eq("master_user_id", masterUser.id)
+        .eq("app_name", "MODEL_BEAUTY")
+        .is("nickname", null);
+
+      if (nicknameBackfillError) {
+        console.warn(
+          `[syncAndGetMasterUser] MODEL_BEAUTY 닉네임 보정 중 오류가 발생했으나 무시하고 진행합니다: ${nicknameBackfillError.message}`
+        );
+      }
+    }
   }
 
   // ── STEP 4: 결과 반환 ───────────────────────────────────────
