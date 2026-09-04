@@ -58,7 +58,7 @@ export async function GET() {
     .reduce((sum, t) => sum + t.amount, 0) ?? 0;
 
   const totalSpent = pointStats
-    ?.filter((t) => t.type === "spend")
+    ?.filter((t) => t.type === "use")
     .reduce((sum, t) => sum + t.amount, 0) ?? 0;
 
   return NextResponse.json({
