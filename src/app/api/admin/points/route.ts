@@ -24,6 +24,7 @@ export async function GET() {
   const totalUsed   = (useData  ?? []).reduce((s, t) => s + t.amount, 0);
   const mocaEarned  = (earnData ?? []).filter(t => t.source_app === "MOCA").reduce((s, t) => s + t.amount, 0);
   const imffEarned  = (earnData ?? []).filter(t => t.source_app === "IMFF").reduce((s, t) => s + t.amount, 0);
+  const beautyEarned = (earnData ?? []).filter(t => t.source_app === "MODEL_BEAUTY").reduce((s, t) => s + t.amount, 0);
 
   // 거래 내역 전체 (최신 200건, 유저 이름/전화번호 포함)
   const { data: transactions, error } = await supabase
@@ -41,7 +42,7 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    stats: { totalEarned, totalUsed, mocaEarned, imffEarned, netPoints: totalEarned - totalUsed },
+    stats: { totalEarned, totalUsed, mocaEarned, imffEarned, beautyEarned, netPoints: totalEarned - totalUsed },
     transactions: transactions ?? [],
   });
 }
@@ -82,9 +83,9 @@ export async function POST(request: Request) {
     }
 
     const appName = appSource as AppName;
-    if (appName !== "MOCA" && appName !== "IMFF") {
+    if (appName !== "MOCA" && appName !== "IMFF" && appName !== "MODEL_BEAUTY") {
       return NextResponse.json(
-        { success: false, error: "appSource는 'MOCA' 또는 'IMFF' 여야 합니다." },
+        { success: false, error: "appSource는 'MOCA', 'IMFF' 또는 'MODEL_BEAUTY' 여야 합니다." },
         { status: 400 }
       );
     }

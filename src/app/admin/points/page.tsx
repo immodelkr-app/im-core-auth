@@ -17,6 +17,7 @@ interface PointStats {
   totalUsed: number;
   mocaEarned: number;
   imffEarned: number;
+  beautyEarned: number;
   netPoints: number;
 }
 
@@ -36,7 +37,7 @@ export default function PointsAdminPage() {
   const [txs, setTxs] = useState<PointTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "earn" | "use">("all");
-  const [appFilter, setAppFilter] = useState<"all" | "MOCA" | "IMFF">("all");
+  const [appFilter, setAppFilter] = useState<"all" | "MOCA" | "IMFF" | "MODEL_BEAUTY">("all");
   const [search, setSearch] = useState("");
 
   // 수동 지급/차감 폼 관련 상태
@@ -46,7 +47,7 @@ export default function PointsAdminPage() {
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [amount, setAmount] = useState("");
   const [type, setType] = useState<"earn" | "use">("earn");
-  const [appSource, setAppSource] = useState<"MOCA" | "IMFF">("MOCA");
+  const [appSource, setAppSource] = useState<"MOCA" | "IMFF" | "MODEL_BEAUTY">("MOCA");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -282,7 +283,7 @@ export default function PointsAdminPage() {
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-500">적용 앱 소스</label>
                 <div className="flex gap-2">
-                  {["MOCA", "IMFF"].map((app) => (
+                  {["MOCA", "IMFF", "MODEL_BEAUTY"].map((app) => (
                     <button type="button" key={app} onClick={() => setAppSource(app as any)}
                       className="flex-1 py-2 rounded-xl text-sm font-semibold transition-colors border"
                       style={{
@@ -326,13 +327,14 @@ export default function PointsAdminPage() {
 
       {/* 통계 카드 */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
           {[
             { label: "총 적립", value: stats.totalEarned, unit: "P", color: "#4ade80", bg: "rgba(74,222,128,0.15)" },
             { label: "총 사용", value: stats.totalUsed,   unit: "P", color: "#f87171", bg: "rgba(248,113,113,0.15)" },
             { label: "순 포인트", value: stats.netPoints, unit: "P", color: "#a78bfa", bg: "rgba(167,139,250,0.15)" },
             { label: "MOCA 적립", value: stats.mocaEarned, unit: "P", color: "#c4b5fd", bg: "rgba(196,181,253,0.1)" },
             { label: "IMFF 적립", value: stats.imffEarned, unit: "P", color: "#818cf8", bg: "rgba(129,140,248,0.1)" },
+            { label: "모델뷰티 적립", value: stats.beautyEarned, unit: "P", color: "#f9a8d4", bg: "rgba(249,168,212,0.1)" },
           ].map((c) => (
             <div key={c.label} className="glass-card p-4 rounded-2xl">
               <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>{c.label}</p>
@@ -362,7 +364,7 @@ export default function PointsAdminPage() {
         </div>
         {/* 앱 필터 */}
         <div className="flex gap-1.5">
-          {(["all", "MOCA", "IMFF"] as const).map((a) => (
+          {(["all", "MOCA", "IMFF", "MODEL_BEAUTY"] as const).map((a) => (
             <button key={a} onClick={() => setAppFilter(a)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150"
               style={{
@@ -438,7 +440,11 @@ export default function PointsAdminPage() {
                     {/* 앱 */}
                     <td className="px-5 py-3.5">
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                        tx.source_app === "MOCA" ? "bg-purple-500/20 text-purple-300" : "bg-violet-500/20 text-violet-300"
+                        tx.source_app === "MOCA"
+                          ? "bg-purple-500/20 text-purple-300"
+                          : tx.source_app === "IMFF"
+                            ? "bg-violet-500/20 text-violet-300"
+                            : "bg-pink-500/20 text-pink-300"
                       }`}>{tx.source_app}</span>
                     </td>
                     {/* 이름 */}
