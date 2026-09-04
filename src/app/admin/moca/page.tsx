@@ -26,6 +26,8 @@ function gradeBadge(grade: string | null) {
     VIP:    { label: "VIP",    bg: "rgba(251,191,36,0.2)",  color: "#fbbf24" },
     GOLD:   { label: "GOLD",   bg: "rgba(234,179,8,0.15)",  color: "#eab308" },
     IMODEL: { label: "IMODEL", bg: "rgba(167,139,250,0.2)", color: "#a78bfa" },
+    SILVER: { label: "SILVER", bg: "rgba(148,163,184,0.2)", color: "#94a3b8" },
+    NORMAL: { label: "NORMAL", bg: "rgba(255,255,255,0.07)", color: "var(--color-text-secondary)" },
   };
   return map[grade] ?? { label: grade, bg: "rgba(255,255,255,0.08)", color: "var(--color-text-secondary)" };
 }
