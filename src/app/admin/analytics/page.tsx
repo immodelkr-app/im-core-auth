@@ -30,7 +30,7 @@ interface AnalyticsData {
   }[];
 }
 
-const COLORS = ["#8b5cf6", "#a78bfa"]; // MOCA, IMFF 브랜드 컬러 매칭
+const COLORS = ["#8b5cf6", "#a78bfa", "#ec4899"]; // MOCA, IMFF, MODEL_BEAUTY 브랜드 컬러 매칭
 
 export default function AnalyticsAdminPage() {
   const [mounted, setMounted] = useState(false);
@@ -135,7 +135,7 @@ export default function AnalyticsAdminPage() {
           <div className="lg:col-span-1 glass-card rounded-2xl p-6 shadow-xl shadow-purple-100 flex flex-col justify-between">
             <div className="mb-4">
               <h2 className="text-sm font-bold text-gray-800">서비스별 회원 연동 비율</h2>
-              <p className="text-xs text-gray-400 mt-0.5">MOCA 및 IMFF 누적 연동 현황</p>
+              <p className="text-xs text-gray-400 mt-0.5">MOCA·IMFF·모델뷰티 누적 연동 현황</p>
             </div>
             <div className="h-48 w-full relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">

@@ -163,7 +163,11 @@ export default function MemberDetailPage({ params }: { params: Promise<{ id: str
                   <div key={m.app_name} className="flex items-center justify-between p-3 rounded-xl bg-gray-50/60 border border-gray-100">
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                        m.app_name === "MOCA" ? "bg-purple-100 text-purple-700" : "bg-violet-100 text-violet-700"
+                        m.app_name === "MOCA"
+                          ? "bg-purple-100 text-purple-700"
+                          : m.app_name === "IMFF"
+                            ? "bg-violet-100 text-violet-700"
+                            : "bg-pink-100 text-pink-700"
                       }`}>{m.app_name}</span>
                       <span className="text-xs font-mono font-bold text-gray-700 max-w-[120px] truncate">{m.local_user_id}</span>
                     </div>

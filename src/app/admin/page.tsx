@@ -53,7 +53,8 @@ async function getDashboardStats() {
 
   const mocaCount = (appMappingData ?? []).filter((m) => m.app_name === "MOCA").length;
   const imffCount = (appMappingData ?? []).filter((m) => m.app_name === "IMFF").length;
-  const total = mocaCount + imffCount || 1;
+  const beautyCount = (appMappingData ?? []).filter((m) => m.app_name === "MODEL_BEAUTY").length;
+  const total = mocaCount + imffCount + beautyCount || 1;
 
   return {
     totalMembers:     totalMembers ?? 0,
@@ -61,9 +62,11 @@ async function getDashboardStats() {
     todayPoints,
     mocaCount,
     imffCount,
-    totalMapped: mocaCount + imffCount,
+    beautyCount,
+    totalMapped: mocaCount + imffCount + beautyCount,
     mocaPercent: Math.round((mocaCount / total) * 100),
     imffPercent: Math.round((imffCount / total) * 100),
+    beautyPercent: Math.round((beautyCount / total) * 100),
     recentTransactions: recentTransactions ?? [],
     memberList: memberList ?? [],
   };
@@ -129,7 +132,7 @@ export default async function AdminDashboardPage() {
     {
       title: "앱 연동 총 건수",
       value: `${stats.totalMapped.toLocaleString()}건`,
-      subtitle: `MOCA ${stats.mocaCount} · IMFF ${stats.imffCount}`,
+      subtitle: `MOCA ${stats.mocaCount} · IMFF ${stats.imffCount} · 모델뷰티 ${stats.beautyCount}`,
       trend: "neutral" as const,
       color: "pink" as const,
       animationDelay: "delay-400",
@@ -180,6 +183,7 @@ export default async function AdminDashboardPage() {
             {[
               { name: "MOCA",  count: stats.mocaCount, percent: stats.mocaPercent, color: "bg-purple-500" },
               { name: "IMFF",  count: stats.imffCount, percent: stats.imffPercent, color: "bg-violet-500" },
+              { name: "MODEL_BEAUTY", count: stats.beautyCount, percent: stats.beautyPercent, color: "bg-pink-500" },
             ].map((app) => (
               <div key={app.name}>
                 <div className="flex items-center justify-between mb-1.5">
@@ -251,7 +255,9 @@ export default async function AdminDashboardPage() {
                       <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                         tx.source_app === "MOCA"
                           ? "bg-purple-100 text-purple-700"
-                          : "bg-violet-100 text-violet-700"
+                          : tx.source_app === "IMFF"
+                            ? "bg-violet-100 text-violet-700"
+                            : "bg-pink-100 text-pink-700"
                       }`}>{tx.source_app}</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{timeAgo(tx.created_at)}</p>
@@ -358,7 +364,9 @@ export default async function AdminDashboardPage() {
                                 className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                                   a.app_name === "MOCA"
                                     ? "bg-purple-100 text-purple-700"
-                                    : "bg-violet-100 text-violet-700"
+                                    : a.app_name === "IMFF"
+                                      ? "bg-violet-100 text-violet-700"
+                                      : "bg-pink-100 text-pink-700"
                                 }`}>
                                 {a.app_name}
                               </span>

@@ -78,6 +78,7 @@ export async function GET(request: Request) {
     // 앱 분포 데이터 계산
     const mocaCount = (mappings ?? []).filter((m) => m.app_name === "MOCA").length;
     const imffCount = (mappings ?? []).filter((m) => m.app_name === "IMFF").length;
+    const beautyCount = (mappings ?? []).filter((m) => m.app_name === "MODEL_BEAUTY").length;
 
     // 차트 데이터용 배열 정렬
     const chartData = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
@@ -88,6 +89,7 @@ export async function GET(request: Request) {
       appDistribution: [
         { name: "MOCA", value: mocaCount },
         { name: "IMFF", value: imffCount },
+        { name: "MODEL_BEAUTY", value: beautyCount },
       ],
     });
   } catch (error) {
