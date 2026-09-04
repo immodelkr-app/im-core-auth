@@ -80,9 +80,26 @@ function maskPhoneNumber(phone: string): string {
 /**
  * 휴대폰 번호를 숫자만 남기도록 정규화합니다.
  * 예) "010-1234-5678" → "01012345678"
+ *
+ * 표준화: MOCA/IMFF/MODEL_BEAUTY는 앱마다 전화번호 표기 방식이 달라(국내 형식, E.164 등)
+ * "+82 10-xxxx-xxxx" 같은 국가코드 포함 형식이 그대로 들어오는 경우가 있다.
+ * 이 경우 숫자만 남기면 "8210xxxxxxxx"(12자리)가 되어 국내 표준 형식(01012345678, 10~11자리)
+ * 검증에 실패하므로, 여기서 국가코드를 국내 형식(0으로 시작)으로 통일한다.
+ * 예) "+821012345678" → "01012345678", "+82-010-1234-5678" → "01012345678"
  */
 function normalizePhoneNumber(phone: string): string {
-  return phone.replace(/\D/g, "");
+  const digits = phone.replace(/\D/g, "");
+
+  if (digits.startsWith("820")) {
+    // 국가코드(82) 뒤에 선행 0을 그대로 남긴 경우: "82010xxxxxxxx" → "010xxxxxxxx"
+    return digits.slice(2);
+  }
+  if (digits.startsWith("82")) {
+    // E.164 표준 형식(선행 0 생략): "8210xxxxxxxx" → "010xxxxxxxx"
+    return "0" + digits.slice(2);
+  }
+
+  return digits;
 }
 
 // ============================================================
@@ -143,9 +160,12 @@ export async function syncAndGetMasterUser(
   const supabase = createAdminClient();
 
   // ── STEP 1: 기존 마스터 유저 조회 ──────────────────────────
-  const { data: existingUser, error: selectError } = await supabase
+  const MASTER_USER_FIELDS =
+    "id, integrated_points, shipping_recipient, shipping_phone, shipping_zipcode, shipping_address, shipping_detail, grade, grade_locked, grade_locked_reason, real_name";
+
+  let { data: existingUser, error: selectError } = await supabase
     .from("master_users")
-    .select("id, integrated_points, shipping_recipient, shipping_phone, shipping_zipcode, shipping_address, shipping_detail, grade, grade_locked, grade_locked_reason")
+    .select(MASTER_USER_FIELDS)
     .eq("phone_number", phoneNumber)
     .maybeSingle();           // 결과 없으면 null, 여러 개면 에러
 
@@ -161,15 +181,62 @@ export async function syncAndGetMasterUser(
   }
 
   // ── STEP 2: 신규 마스터 계정 생성 (없는 경우) ──────────────
-  let masterUser: Pick<MasterUser, "id" | "integrated_points" | "grade" | "grade_locked" | "grade_locked_reason">;
+  let masterUser: Pick<MasterUser, "id" | "integrated_points" | "grade" | "grade_locked" | "grade_locked_reason"> | null = null;
   let isNewUser = false;
   let linkedApps: AppName[] = [];
 
   const validGrades = ["NORMAL", "SILVER", "GOLD", "IMODEL", "VIP"];
   const formattedGrade = grade && validGrades.includes(grade.toUpperCase()) ? grade.toUpperCase() : undefined;
 
-  if (existingUser) {
-    // 기존 유저 — 조회 결과 그대로 사용
+  if (!existingUser) {
+    // 신규 유저 생성 시도
+    const displayName = name?.trim() || maskPhoneNumber(phoneNumber);
+
+    const { data: createdUser, error: insertError } = await supabase
+      .from("master_users")
+      .insert({
+        phone_number: phoneNumber,
+        name: displayName,
+        real_name: realName?.trim() || null,
+        integrated_points: 0,
+        ...(formattedGrade ? { grade: formattedGrade } : {}),
+      })
+      .select("id, integrated_points, grade, grade_locked, grade_locked_reason")
+      .single();
+
+    if (insertError?.code === "23505") {
+      // 표준화: MOCA/IMFF 로그인과 뒤이은 MODEL_BEAUTY 자동유입 upsert처럼 같은 번호로
+      // 거의 동시에 신규 생성 요청이 들어와 경쟁이 발생한 경우. 실패로 끝내지 않고
+      // 방금 다른 요청이 먼저 만든 계정을 재조회해 정상적인 "기존 유저" 경로로 합류시킨다.
+      const { data: raceUser, error: raceSelectError } = await supabase
+        .from("master_users")
+        .select(MASTER_USER_FIELDS)
+        .eq("phone_number", phoneNumber)
+        .maybeSingle();
+
+      if (raceSelectError || !raceUser) {
+        throw new AuthError(
+          `마스터 유저 생성 중 오류가 발생했습니다(경쟁 상태 재조회 실패): ${raceSelectError?.message ?? "알 수 없는 오류"}`,
+          "DB_INSERT_ERROR",
+          raceSelectError ?? undefined
+        );
+      }
+      existingUser = raceUser;
+    } else if (insertError || !createdUser) {
+      throw new AuthError(
+        `마스터 유저 생성 중 오류가 발생했습니다: ${insertError?.message ?? "알 수 없는 오류"}`,
+        "DB_INSERT_ERROR",
+        insertError ?? undefined
+      );
+    } else {
+      masterUser = createdUser;
+      isNewUser = true;
+      linkedApps = [];  // 신규 유저는 연동 앱 없음
+    }
+  }
+
+  if (existingUser && !isNewUser) {
+    // 기존 유저(최초 조회 또는 경쟁 상태 재조회 결과) — 조회 결과 그대로 사용
     masterUser = existingUser;
 
     // 현재 요청 앱(appName)을 제외하고 이미 연동된 앱 목록 조회
@@ -190,45 +257,18 @@ export async function syncAndGetMasterUser(
         .eq("id", existingUser.id);
       masterUser.grade = formattedGrade;
     }
-  } else {
-    // 신규 유저 생성
-    const displayName = name?.trim() || maskPhoneNumber(phoneNumber);
 
-    const { data: createdUser, error: insertError } = await supabase
-      .from("master_users")
-      .insert({
-        phone_number: phoneNumber,
-        name: displayName,
-        real_name: realName?.trim() || null,
-        integrated_points: 0,
-        ...(formattedGrade ? { grade: formattedGrade } : {}),
-      })
-      .select("id, integrated_points, grade, grade_locked, grade_locked_reason")
-      .single();
-
-    if (insertError || !createdUser) {
-      throw new AuthError(
-        `마스터 유저 생성 중 오류가 발생했습니다: ${insertError?.message ?? "알 수 없는 오류"}`,
-        "DB_INSERT_ERROR",
-        insertError ?? undefined
-      );
-    }
-
-    masterUser = createdUser;
-    isNewUser = true;
-    linkedApps = [];  // 신규 유저는 연동 앱 없음
-  }
-
-  // 기존 유저인데 real_name이 없으면 업데이트 (모델뷰티 가입 시 채우기)
-  if (!isNewUser && realName?.trim() && existingUser) {
-    // real_name이 null인지 확인 후 업데이트 (타입 안전을 위해 any 캐스팅)
-    const existingRealName = (existingUser as any).real_name;
-    if (!existingRealName) {
+    // 기존 유저인데 real_name이 없으면 업데이트 (모델뷰티 가입 시 채우기)
+    if (realName?.trim() && !existingUser.real_name) {
       await supabase
         .from("master_users")
         .update({ real_name: realName.trim() })
         .eq("id", existingUser.id);
     }
+  }
+
+  if (!masterUser) {
+    throw new AuthError("마스터 유저 정보를 확정하지 못했습니다.", "UNKNOWN");
   }
 
   // ── STEP 3: 앱 매핑 upsert ──────────────────────────────────
