@@ -6,8 +6,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchKstartup, type MatchProfile, type NoticeRow } from "./notices";
 import { fetchAnsanArt } from "./ansanart";
+import { fetchGgcf } from "./ggcf";
 
-export type CollectResult = { kstartup: number; ansanart: number; errors: string[] };
+export type CollectResult = { kstartup: number; ansanart: number; ggcf: number; errors: string[] };
+
+// 마감일을 몰라 계속 "원문 확인"으로 남는 게시판 공고 → 게시 60일 지나면 정리
+const BOARD_SOURCES = ["ansanart", "ggcf"];
 
 export async function collectNotices(supabase: SupabaseClient): Promise<CollectResult> {
   // 매칭 점수는 저장된 사업자 프로필(개업일·탐색 지역·업종) 기준 — 프로필을 바꾸면 다시 수집해야 반영됨
@@ -15,15 +19,20 @@ export async function collectNotices(supabase: SupabaseClient): Promise<CollectR
   const profile = (profileRow?.profile ?? {}) as MatchProfile;
 
   const apiKey = process.env.KSTARTUP_API_KEY;
-  const [ks, aa] = await Promise.allSettled([
+  const [ks, aa, gg] = await Promise.allSettled([
     apiKey ? fetchKstartup(apiKey, profile) : Promise.reject(new Error("KSTARTUP_API_KEY 환경 변수가 설정되지 않았습니다.")),
     fetchAnsanArt(profile),
+    fetchGgcf(profile),
   ]);
 
   const errors: string[] = [];
   const rows: NoticeRow[] = [];
-  if (ks.status === "fulfilled") rows.push(...ks.value); else errors.push(`K-Startup: ${(ks.reason as Error).message}`);
-  if (aa.status === "fulfilled") rows.push(...aa.value); else errors.push(`안산문화재단: ${(aa.reason as Error).message}`);
+  const take = (r: PromiseSettledResult<NoticeRow[]>, name: string) => {
+    if (r.status === "fulfilled") rows.push(...r.value);
+    else errors.push(`${name}: ${(r.reason as Error).message}`);
+    return r.status === "fulfilled" ? r.value.length : 0;
+  };
+  const counts = { kstartup: take(ks, "K-Startup"), ansanart: take(aa, "안산문화재단"), ggcf: take(gg, "경기문화재단") };
 
   if (rows.length > 0) {
     const collected_at = new Date().toISOString();
@@ -33,15 +42,8 @@ export async function collectNotices(supabase: SupabaseClient): Promise<CollectR
     if (error) throw new Error(`저장 실패: ${error.message}`);
   }
 
-  // 안산문화재단 공고는 마감일을 몰라 계속 "상시"로 남으므로, 게시 60일 지나면 정리
-  if (aa.status === "fulfilled") {
-    const cutoff = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
-    await supabase.from("brain_notices").delete().eq("source", "ansanart").lt("apply_start", cutoff);
-  }
+  const cutoff = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+  await supabase.from("brain_notices").delete().in("source", BOARD_SOURCES).lt("apply_start", cutoff);
 
-  return {
-    kstartup: ks.status === "fulfilled" ? ks.value.length : 0,
-    ansanart: aa.status === "fulfilled" ? aa.value.length : 0,
-    errors,
-  };
+  return { ...counts, errors };
 }

@@ -88,3 +88,26 @@ assert.equal(isStageParticipation("2026 서울패션위크 시니어 모델 모�
 const sc = (t) => ansanArtToRow({ seq: "9", title: t, date: "2026-11-01" }, profile).match_score;
 assert.ok(sc("제23회 안산거리극축제 국내공식참가작 공모") > sc("2027년도 안산문화예술의전당 공연장 1분기 수시대관 공고"));
 console.log("participation OK");
+
+// ── 경기문화재단 ──
+const { parseGgcfList, ggcfToRow, fetchGgcf } = await import("../src/lib/brain/ggcf.ts");
+const ggHtml = `<div class="list"><a href="https://www.ggcf.kr/boards/businessNotices/articles/21707" class="clearfix"><span class="badge">창작지원</span> <span class="no-badge ing application-status application-status-0">진행</span>
+<p class="tit new ">[공고문] 경기 예술인의 집 영한전시 참여작가 모집
+</p><span class="date">2026.11.16</span></a></div>
+<div class="list"><a href="https://www.ggcf.kr/boards/businessNotices/articles/21664"><span class="badge">창작지원</span><span class="no-badge application-status">종료</span><p class="tit">공공갤러리 전시공간 지원 공모</p><span class="date">2026.10.28</span></a></div>
+<div class="list"><a href="https://www.ggcf.kr/boards/businessNotices/articles/21000"><span class="badge">생활문화</span><span class="no-badge application-status"></span><p class="tit">2027 안산 생활예술 퍼레이드 참가팀 모집</p><span class="date">2026.11.20</span></a></div>`;
+const gi = parseGgcfList(ggHtml);
+assert.deepEqual(gi.map((g) => [g.id, g.status, g.date]), [["21707", "진행", "2026-11-16"], ["21664", "종료", "2026-10-28"], ["21000", "", "2026-11-20"]]);
+assert.equal(ggcfToRow(gi[1]), null); // 종료
+const parade = ggcfToRow(gi[2], profile);
+assert.equal(parade.region, "안산");
+assert.equal(parade.category, "축제·공연 참가 공모");
+assert.equal(ggcfToRow(gi[0], profile).region, "경기");
+console.log("ggcf OK");
+if (process.env.LIVE) {
+  const rows = await fetchGgcf(profile);
+  console.log("ggcf live:", rows.length, "rows");
+  for (const r of rows) console.log(" ", r.match_score, r.region, r.category, r.title.slice(0, 50));
+}
+assert.equal(isStageParticipation("[공고문] 경기 예술인의 집 영한전시 참여작가 모집"), false); // 전시 작가 공모는 무대 참가 아님
+console.log("stage keywords OK");

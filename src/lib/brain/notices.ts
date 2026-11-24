@@ -31,7 +31,8 @@ export type MatchProfile = {
 /** 축제·공연·패션쇼에 팀으로 참가/출연할 수 있는 공모 (시니어모델 과정 무대 기회) — 지역 무관 알림 대상 */
 export const PARTICIPATION_CATEGORY = "축제·공연 참가 공모";
 const PARTICIPATE = /참가|참여|출연|단원|작품\s*공모|모델\s*모집/;
-const STAGE = /축제|공연|패션|무대|퍼레이드|페스타|거리극|연극|극단|댄스|예술|런웨이|모델/;
+// "예술"·"전시"처럼 넓은 말은 넣지 않음 (전시 참여작가 모집 같은 무관한 공고가 섞임)
+const STAGE = /축제|공연|패션|무대|퍼레이드|페스타|거리극|거리예술|연극|극단|댄스|뮤지컬|런웨이|모델/;
 export function isStageParticipation(title: string): boolean {
   return PARTICIPATE.test(title) && STAGE.test(title);
 }

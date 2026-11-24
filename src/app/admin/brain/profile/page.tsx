@@ -18,6 +18,8 @@ type Profile = {
   website: string;
   phone: string;
   target_regions: string[];
+  alt_applicants: string;
+  relocation: string;
 };
 
 const REGIONS = ["서울", "경기", "안산", "용인", "수원", "인천", "전국"];
@@ -50,6 +52,8 @@ const DEFAULT_PROFILE: Profile = {
   website: "https://immodel.kr",
   phone: "",
   target_regions: ["서울", "경기", "안산", "용인", "수원", "전국"],
+  alt_applicants: "신안산대학교 (평생교육원 모델 교육과정 운영 — 대학 명의로 신청 가능)",
+  relocation: "2027년 1월경 사업장 주소지를 안산시로 이전 예정",
 };
 
 const INPUT = "w-full px-3 py-2 rounded-xl text-sm outline-none border border-gray-200 focus:border-purple-400";
@@ -206,6 +210,19 @@ export default function BrainProfilePage() {
             <Field label="주요 사업 내용 (제안서 작성 시 활용)" id="description">
               <textarea id="description" rows={10} className={INPUT} style={{ resize: "vertical", lineHeight: 1.7 }}
                 value={profile.description} onChange={(e) => set("description", e.target.value)} />
+            </Field>
+          </Card>
+
+          <Card title="신청 주체 및 이전 계획 (제안서 자격 검토에 활용)">
+            <Field label="글로벌아임 외에 신청할 수 있는 주체" id="alt-applicants">
+              <textarea id="alt-applicants" rows={2} className={INPUT} style={{ resize: "vertical" }}
+                placeholder="예: 신안산대학교 (평생교육원 명의로 신청 가능)"
+                value={profile.alt_applicants} onChange={(e) => set("alt_applicants", e.target.value)} />
+            </Field>
+            <Field label="사업장 이전 등 예정 사항" id="relocation">
+              <textarea id="relocation" rows={2} className={INPUT} style={{ resize: "vertical" }}
+                placeholder="예: 2027년 1월 안산시로 사업장 이전 예정"
+                value={profile.relocation} onChange={(e) => set("relocation", e.target.value)} />
             </Field>
           </Card>
 

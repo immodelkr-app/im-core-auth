@@ -7,8 +7,9 @@ import { calculateMatchScore, isStageParticipation, PARTICIPATION_CATEGORY, type
 
 const BASE = "https://www.ansanart.com/lay1/bbs/S1T84C86/A/15";
 
-// 공모·모집 자체가 아닌 사후 공지(결과 발표 등)와 소액 행정 공고는 제외
-const SKIP = /결과|선정|발표|합격|취소|연기|변경|정정|안내문|채용|직원|견적|수의계약|평가위원|서포터즈|자원활동/;
+// 공모·모집 자체가 아닌 사후 공지(결과 발표 등)와 소액 행정 공고는 제외 (문화재단 게시판 공통)
+export const SKIP = /결과|선정|발표|합격|당선|취소|연기|변경|정정|안내문|채용|직원|견적|수의계약|평가위원|서포터즈|자원활동|모니터링단|심의 대상|본선 진출/;
+
 export function ansanArtCategory(title: string): string {
   if (/대관/.test(title)) return "공간 대관";
   if (isStageParticipation(title)) return PARTICIPATION_CATEGORY;

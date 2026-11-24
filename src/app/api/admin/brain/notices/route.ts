@@ -29,11 +29,11 @@ export async function POST() {
 
   try {
     const r = await collectNotices(createAdminClient());
-    if (r.kstartup + r.ansanart === 0 && r.errors.length > 0) {
+    if (r.kstartup + r.ansanart + r.ggcf === 0 && r.errors.length > 0) {
       return NextResponse.json({ success: false, error: r.errors.join(" / ") }, { status: 502 });
     }
     // 수집만 하고 문자는 보내지 않음 (문자는 매일 자동 수집 때만)
-    return NextResponse.json({ success: true, count: r.kstartup + r.ansanart, ...r });
+    return NextResponse.json({ success: true, count: r.kstartup + r.ansanart + r.ggcf, ...r });
   } catch (e) {
     return NextResponse.json({ success: false, error: (e as Error).message }, { status: 500 });
   }
