@@ -17,6 +17,8 @@ type Notice = {
   url: string | null;
   description: string | null;
   match_score: number;
+  biz_age: string | null;
+  eligible: boolean | null;
   collected_at: string;
 };
 
@@ -55,6 +57,7 @@ export default function BrainNoticesPage() {
   const [category, setCategory] = useState("전체");
   const [region, setRegion] = useState("전체");
   const [hideClosed, setHideClosed] = useState(true);
+  const [eligibleOnly, setEligibleOnly] = useState(true);
   const [selected, setSelected] = useState<Notice | null>(null);
 
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }); // YYYY-MM-DD
@@ -104,11 +107,12 @@ export default function BrainNoticesPage() {
     const q = query.trim().toLowerCase();
     return notices
       .filter((n) => !hideClosed || !n.deadline || n.deadline >= today)
+      .filter((n) => !eligibleOnly || n.eligible !== false)
       .filter((n) => category === "전체" || n.category === category)
       .filter((n) => region === "전체" || n.region === region || `${n.title} ${n.org ?? ""}`.includes(region))
       .filter((n) => !q || `${n.title} ${n.org ?? ""} ${n.description ?? ""}`.toLowerCase().includes(q))
       .sort((a, b) => b.match_score - a.match_score || (a.deadline ?? "9").localeCompare(b.deadline ?? "9"));
-  }, [notices, query, category, region, hideClosed, today]);
+  }, [notices, query, category, region, hideClosed, eligibleOnly, today]);
 
   const lastCollected = notices.reduce<string | null>((m, n) => (!m || n.collected_at > m ? n.collected_at : m), null);
 
@@ -147,6 +151,10 @@ export default function BrainNoticesPage() {
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", marginRight: 4 }}>지역</span>
           {REGIONS.map((r) => <Chip key={r} active={region === r} onClick={() => setRegion(r)}>{r}</Chip>)}
           <label style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--color-text-secondary)", cursor: "pointer" }}>
+            <input type="checkbox" checked={eligibleOnly} onChange={(e) => setEligibleOnly(e.target.checked)} style={{ accentColor: "#7c3aed" }} />
+            업력 조건 맞는 공고만
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--color-text-secondary)", cursor: "pointer" }}>
             <input type="checkbox" checked={hideClosed} onChange={(e) => setHideClosed(e.target.checked)} style={{ accentColor: "#7c3aed" }} />
             마감 공고 숨기기
           </label>
@@ -179,6 +187,7 @@ export default function BrainNoticesPage() {
                     <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: st.bg, color: st.text }}>{st.label}</span>
                     {n.category && <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: "var(--color-surface-subtle)", color: "var(--color-text-secondary)" }}>{n.category}</span>}
                     {n.region && <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: "rgba(124,58,237,0.08)", color: "#7c3aed" }}>{n.region}</span>}
+                    {n.eligible === false && <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: "rgba(239,68,68,0.12)", color: "#dc2626" }}>업력 미충족</span>}
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
                   <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 4 }}>
@@ -208,6 +217,7 @@ export default function BrainNoticesPage() {
                 ["접수 기간", `${selected.apply_start ?? "?"} ~ ${selected.deadline ?? "상시"}`],
                 ["분야 / 지역", `${selected.category ?? "-"} / ${selected.region ?? "-"}`],
                 ["매칭률", `${selected.match_score}%`],
+                ["업력 조건", `${selected.biz_age ?? "제한 없음"}${selected.eligible === false ? " (미충족)" : ""}`],
               ].map(([k, v]) => (
                 <div key={k}><dt style={{ color: "#777", fontSize: 12 }}>{k}</dt><dd style={{ fontWeight: 600, color: "#222", margin: 0 }}>{v}</dd></div>
               ))}

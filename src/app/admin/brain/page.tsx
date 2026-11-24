@@ -37,6 +37,7 @@ export default async function BrainPage() {
     supabase.from("brain_notices").select("id", { count: "exact", head: true }).or(open),
     supabase.from("brain_notices").select("id", { count: "exact", head: true }).gte("deadline", today).lte("deadline", weekLater),
     supabase.from("brain_notices").select("id, title, org, region, deadline, match_score").or(open)
+      .not("eligible", "is", false) // 업력 미충족 제외 (판정 불가 NULL은 포함)
       .order("match_score", { ascending: false }).order("deadline", { ascending: true, nullsFirst: false }).limit(5),
     supabase.from("brain_proposals").select("id, notice_id, notice_title, created_by, created_at")
       .order("created_at", { ascending: false }).limit(5),
