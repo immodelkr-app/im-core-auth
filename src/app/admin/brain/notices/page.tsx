@@ -90,7 +90,7 @@ export default function BrainNoticesPage() {
       const json = await fetch("/api/admin/brain/notices", { method: "POST" }).then((r) => r.json());
       if (!json.success) throw new Error(json.error);
       await load();
-      setMessage({ ok: json.errors.length === 0, text: `K-Startup ${json.kstartup}건 · 안산문화재단 ${json.ansanart}건 · 경기문화재단 ${json.ggcf}건 · 서울문화재단 ${json.sfac}건 · 용인문화재단 ${json.yicf}건 수집${json.errors.length ? ` (일부 실패: ${json.errors.join(" / ")})` : ""}` });
+      setMessage({ ok: json.errors.length === 0, text: `K-Startup ${json.kstartup}건 · 안산문화재단 ${json.ansanart}건 · 경기문화재단 ${json.ggcf}건 · 서울문화재단 ${json.sfac}건 · 용인문화재단 ${json.yicf}건 · 수원문화재단 ${json.swcf}건 수집${json.errors.length ? ` (일부 실패: ${json.errors.join(" / ")})` : ""}` });
     } catch (e) {
       setMessage({ ok: false, text: `수집 실패: ${(e as Error).message}` });
     } finally {
@@ -123,7 +123,7 @@ export default function BrainNoticesPage() {
           <Link href="/admin/brain" style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>← imBrain</Link>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--color-text-primary)", margin: "4px 0 0" }}>🔎 지원사업 공고 검색</h1>
           <p style={{ color: "var(--color-text-secondary)", marginTop: 4, fontSize: 14 }}>
-            K-Startup 모집중 공고 + 안산·경기·서울·용인문화재단 공모 · 글로벌아임 매칭률 순
+            K-Startup 모집중 공고 + 안산·경기·서울·용인·수원문화재단 공모 · 글로벌아임 매칭률 순
             {lastCollected && ` · 마지막 수집 ${new Date(lastCollected).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`}
           </p>
         </div>
