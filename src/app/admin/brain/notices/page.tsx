@@ -223,11 +223,16 @@ export default function BrainNoticesPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
               {selected.url && (
                 <a href={selected.url} target="_blank" rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90"
-                  style={{ backgroundColor: "var(--color-accent)" }}>
+                  className="px-4 py-2 rounded-xl text-sm font-semibold border hover:opacity-80"
+                  style={{ borderColor: "#ddd", color: "#333" }}>
                   원문 공고 보기 ↗
                 </a>
               )}
+              <Link href={`/admin/brain/proposal?notice=${selected.id}`}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90"
+                style={{ backgroundColor: "var(--color-accent)" }}>
+                이 공고로 제안서 작성 →
+              </Link>
             </div>
           </div>
         </div>

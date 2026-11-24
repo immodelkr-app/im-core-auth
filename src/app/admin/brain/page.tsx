@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "imBrain 지원사업" };
 const SECTIONS = [
   { icon: "🏢", title: "사업자 프로필", desc: "업종·지역·매출 정보", href: "/admin/brain/profile" },
   { icon: "🔎", title: "지원사업 공고 검색", desc: "K-Startup 모집중 공고 · 매칭률 순", href: "/admin/brain/notices" },
-  { icon: "✍️", title: "제안서 작성", desc: "Claude 기반 제안서 초안 생성 (4단계 준비 중)" },
+  { icon: "✍️", title: "제안서 작성", desc: "Claude가 공고 맞춤 제안서 초안 작성", href: "/admin/brain/proposal" },
 ];
 
 export default function BrainPage() {
