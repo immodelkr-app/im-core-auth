@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 // ── 네비게이션 메뉴 정의 ──────────────────────────────────────
 const NAV_ITEMS = [
@@ -142,9 +142,21 @@ const BOTTOM_ITEMS = [
 ] as const;
 
 // ── 컴포넌트 ──────────────────────────────────────────────────
+const MOBILE_MQ = "(max-width: 767px)";
+function subscribeMobile(onChange: () => void) {
+  const mq = window.matchMedia(MOBILE_MQ);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // 휴대폰 폭에서는 기본으로 아이콘만 보이게 접고, 펼쳤다가 메뉴를 누르면 다시 접음
+  const isMobile = useSyncExternalStore(subscribeMobile, () => window.matchMedia(MOBILE_MQ).matches, () => false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const isCollapsed = isMobile ? !mobileOpen : desktopCollapsed;
+  const closeOnMobile = () => setMobileOpen(false);
 
   function isActive(href: string): boolean {
     if (href === "/admin") return pathname === "/admin";
@@ -197,6 +209,7 @@ export default function Sidebar() {
           const active = isActive(item.href);
           return (
             <Link
+              onClick={closeOnMobile}
               key={item.id}
               href={item.href}
               title={isCollapsed ? item.label : undefined}
@@ -257,6 +270,7 @@ export default function Sidebar() {
       <div className="px-2 py-3 space-y-0.5">
         {BOTTOM_ITEMS.map((item) => (
           <Link
+            onClick={closeOnMobile}
             key={item.href}
             href={item.href}
             title={isCollapsed ? item.label : undefined}
@@ -289,7 +303,7 @@ export default function Sidebar() {
 
       {/* ── 접기/펼치기 버튼 ── */}
       <button
-        onClick={() => setIsCollapsed((prev) => !prev)}
+        onClick={() => (isMobile ? setMobileOpen((o) => !o) : setDesktopCollapsed((c) => !c))}
         aria-label={isCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
         className="absolute -right-3 top-20 z-10 w-6 h-6 rounded-full bg-violet-600 border-2 border-violet-800 flex items-center justify-center shadow-md hover:bg-violet-500 transition-colors duration-200"
       >

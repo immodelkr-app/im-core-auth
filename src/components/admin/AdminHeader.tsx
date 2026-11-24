@@ -102,7 +102,7 @@ export default function AdminHeader() {
 
   return (
     <header
-      className="shrink-0 h-16 px-6 flex items-center justify-between border-b"
+      className="shrink-0 h-16 px-3 md:px-6 flex items-center justify-between border-b"
       style={{
         backgroundColor: "rgba(255,255,255,0.85)",
         backdropFilter: "blur(12px)",
@@ -114,7 +114,7 @@ export default function AdminHeader() {
       {/* 현재 시스템 상태 */}
       <div className="flex items-center gap-2">
         <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="text-sm text-gray-500 font-medium">시스템 정상 운영 중</span>
+        <span className="hidden sm:inline text-sm text-gray-500 font-medium">시스템 정상 운영 중</span>
       </div>
 
       {/* 우측 액션 */}

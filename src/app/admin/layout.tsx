@@ -25,7 +25,7 @@ export default function AdminLayout({
         <AdminHeader />
 
         {/* 실제 콘텐츠 */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3 md:p-6">
           {children}
         </main>
       </div>
