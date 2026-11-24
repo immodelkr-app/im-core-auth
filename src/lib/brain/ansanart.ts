@@ -3,12 +3,18 @@
 // 게시판 HTML 목록에서 제목·작성일·링크를 읽음 (본문은 이미지인 경우가 많아 마감일은 알 수 없음)
 // ============================================================
 
-import { calculateMatchScore, type MatchProfile, type NoticeRow } from "./notices";
+import { calculateMatchScore, isStageParticipation, PARTICIPATION_CATEGORY, type MatchProfile, type NoticeRow } from "./notices";
 
 const BASE = "https://www.ansanart.com/lay1/bbs/S1T84C86/A/15";
 
-// 공모·모집 자체가 아닌 사후 공지 (결과 발표 등)는 알림 대상이 아니라 제외
-const SKIP = /결과|선정|발표|합격|취소|연기|변경|정정|안내문|채용|직원/;
+// 공모·모집 자체가 아닌 사후 공지(결과 발표 등)와 소액 행정 공고는 제외
+const SKIP = /결과|선정|발표|합격|취소|연기|변경|정정|안내문|채용|직원|견적|수의계약|평가위원|서포터즈|자원활동/;
+export function ansanArtCategory(title: string): string {
+  if (/대관/.test(title)) return "공간 대관";
+  if (isStageParticipation(title)) return PARTICIPATION_CATEGORY;
+  if (/입찰|용역/.test(title)) return "행사 용역 입찰";
+  return "문화예술 공모";
+}
 
 /** 공고사항 목록 HTML → { seq, title, date } */
 export function parseAnsanArtList(html: string): { seq: string; title: string; date: string }[] {
@@ -31,7 +37,7 @@ export function parseAnsanArtList(html: string): { seq: string; title: string; d
 
 export function ansanArtToRow(r: { seq: string; title: string; date: string }, profile: MatchProfile = {}): NoticeRow | null {
   if (SKIP.test(r.title)) return null;
-  const category = /대관/.test(r.title) ? "공간 대관" : /입찰|용역/.test(r.title) ? "행사 용역 입찰" : "문화예술 공모";
+  const category = ansanArtCategory(r.title);
   const base = { title: r.title, region: "안산", category, org: "안산문화재단", description: null };
   return {
     source: "ansanart",

@@ -5,6 +5,7 @@
 
 import crypto from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { PARTICIPATION_CATEGORY } from "./notices";
 
 /** 이 점수 이상인 안산 공고만 알림 */
 export const ALERT_MIN_SCORE = 75;
@@ -42,13 +43,21 @@ export function alertPhones(): string[] {
     .filter((p) => /^01\d{8,9}$/.test(p));
 }
 
-type AlertNotice = { id: string; title: string; org: string | null; deadline: string | null; match_score: number; url: string | null };
+type AlertNotice = { id: string; title: string; org: string | null; region: string | null; category: string | null; deadline: string | null; match_score: number; url: string | null };
+
+/** 축제·공연 참가 공모를 먼저, 그다음 점수 순 */
+export function sortForAlert(notices: AlertNotice[]): AlertNotice[] {
+  const p = (n: AlertNotice) => (n.category === PARTICIPATION_CATEGORY ? 0 : 1);
+  return [...notices].sort((a, b) => p(a) - p(b) || b.match_score - a.match_score);
+}
 
 export function buildAlertText(notices: AlertNotice[]): string {
-  const lines = [`[imBrain] 안산 지원사업 새 공고 ${notices.length}건`, ""];
-  notices.slice(0, MAX_LISTED).forEach((n, i) => {
-    lines.push(`${i + 1}. ${n.title}`);
-    lines.push(`   ${n.org ?? ""} · 매칭 ${n.match_score} · 마감 ${n.deadline ?? "원문 확인"}`);
+  const stage = notices.filter((n) => n.category === PARTICIPATION_CATEGORY).length;
+  const lines = [`[imBrain] 새 공고 ${notices.length}건${stage ? ` (축제·공연 참가 ${stage}건)` : ""}`, ""];
+  sortForAlert(notices).slice(0, MAX_LISTED).forEach((n, i) => {
+    const tag = n.category === PARTICIPATION_CATEGORY ? "🎭참가 " : "";
+    lines.push(`${i + 1}. ${tag}${n.title}`);
+    lines.push(`   ${n.region ?? ""} ${n.org ?? ""} · 매칭 ${n.match_score} · 마감 ${n.deadline ?? "원문 확인"}`);
     if (n.url) lines.push(`   ${n.url}`);
   });
   if (notices.length > MAX_LISTED) lines.push("", `외 ${notices.length - MAX_LISTED}건은 어드민에서 확인하세요.`);
@@ -56,7 +65,8 @@ export function buildAlertText(notices: AlertNotice[]): string {
 }
 
 /**
- * 아직 알리지 않은 안산 고득점 공고를 한 통의 문자로 보내고 notified_at 기록.
+ * 아직 알리지 않은 공고를 한 통의 문자로 보내고 notified_at 기록.
+ * 대상: ① 안산 공고 중 매칭 ALERT_MIN_SCORE 이상  ② 지역 무관 축제·공연·패션쇼 참가 공모
  * 발송이 실패하면 기록하지 않으므로 다음 실행 때 다시 시도됨.
  */
 export async function sendAnsanAlerts(supabase: SupabaseClient): Promise<{ sent: number; skipped?: string }> {
@@ -66,9 +76,8 @@ export async function sendAnsanAlerts(supabase: SupabaseClient): Promise<{ sent:
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const { data, error } = await supabase
     .from("brain_notices")
-    .select("id, title, org, deadline, match_score, url")
-    .eq("region", "안산")
-    .gte("match_score", ALERT_MIN_SCORE)
+    .select("id, title, org, region, category, deadline, match_score, url")
+    .or(`and(region.eq.안산,match_score.gte.${ALERT_MIN_SCORE}),category.eq."${PARTICIPATION_CATEGORY}"`)
     .not("eligible", "is", false)
     .is("notified_at", null)
     .or(`deadline.is.null,deadline.gte.${today}`)

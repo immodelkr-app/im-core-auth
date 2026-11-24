@@ -67,3 +67,24 @@ if (process.env.LIVE) {
   console.log("ansanart live:", rows.length, "rows");
   for (const r of rows) console.log(" ", r.match_score, r.apply_start, r.category, r.title.slice(0, 50));
 }
+
+// ── 축제·공연 참가 공모 분류 (실제 과거 공고 제목) ──
+const { ansanArtCategory } = await import("../src/lib/brain/ansanart.ts");
+const { isStageParticipation } = await import("../src/lib/brain/notices.ts");
+const cat = (t) => ansanArtCategory(t);
+assert.equal(cat("제23회 안산거리극축제 국내공식참가작 공모"), "축제·공연 참가 공모");
+assert.equal(cat("2026 안산거리예술마켓 ASAM 초이스 작품 공모"), "축제·공연 참가 공모");
+assert.equal(cat("2026 오픈 더 보노마루 <스트릿댄스 페스타> 참여자 모집 공모(기간연장)"), "축제·공연 참가 공모");
+assert.equal(cat("2026 꿈의 극단 '안산' 단원 모집"), "축제·공연 참가 공모");
+assert.equal(cat("2027년도 안산문화예술의전당 공연장 1분기 수시대관 공고"), "공간 대관");
+assert.equal(cat("제7회 안산 김홍도축제 행사 대행 용역 입찰 공고"), "행사 용역 입찰");
+assert.equal(ansanArtToRow({ seq: "1", title: "제22회 안산국제거리극축제 홍보현수막 제작 소액수의계약 견적제출 안내공고", date: "2026-11-01" }), null);
+assert.equal(ansanArtToRow({ seq: "2", title: "2025 안산거리예술마켓 행사 운영 대행 제안서 평가위원 후보자 모집", date: "2026-11-01" }), null);
+// K-Startup 스타트업 행사는 참가 공모로 잡히면 안 됨
+assert.equal(isStageParticipation("「2026년 대구스타트업 리더스포럼」제65차 IR피칭 참여기업 모집"), false);
+assert.equal(isStageParticipation("VC밋업 : 4인의 심사역과 함께하는 테이블토크"), false);
+assert.equal(isStageParticipation("2026 서울패션위크 시니어 모델 모집"), true);
+// 참가 공모가 대관보다 점수가 높아야 함
+const sc = (t) => ansanArtToRow({ seq: "9", title: t, date: "2026-11-01" }, profile).match_score;
+assert.ok(sc("제23회 안산거리극축제 국내공식참가작 공모") > sc("2027년도 안산문화예술의전당 공연장 1분기 수시대관 공고"));
+console.log("participation OK");

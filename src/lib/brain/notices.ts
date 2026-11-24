@@ -28,8 +28,18 @@ export type MatchProfile = {
   biz_types?: string[];
 };
 
+/** 축제·공연·패션쇼에 팀으로 참가/출연할 수 있는 공모 (시니어모델 과정 무대 기회) — 지역 무관 알림 대상 */
+export const PARTICIPATION_CATEGORY = "축제·공연 참가 공모";
+const PARTICIPATE = /참가|참여|출연|단원|작품\s*공모|모델\s*모집/;
+const STAGE = /축제|공연|패션|무대|퍼레이드|페스타|거리극|연극|극단|댄스|예술|런웨이|모델/;
+export function isStageParticipation(title: string): boolean {
+  return PARTICIPATE.test(title) && STAGE.test(title);
+}
+
 // 업력 7~10년 서비스·커머스 기업 기준 분야 가중치 (행사·창업교육은 실익이 적어 감점)
 const CATEGORY_WEIGHT: [RegExp, number][] = [
+  [/참가 공모/, 25], // 축제·공연 참가 (시니어모델 패션쇼·공연 무대) — 최우선
+  [/대관/, 5], // 패션쇼를 직접 열 공연장·전시관
   [/사업화|판로|해외|글로벌/, 15],
   [/용역|입찰/, 10], // 행사·공연 기획 대행 (글로벌아임 공연기획 업종)
   [/정책자금|융자|보증/, 10],
@@ -125,7 +135,7 @@ export function kstartupToRow(c: Record<string, string>, profile: MatchProfile =
   if (!c.pbanc_sn || !title) return null; // 번호 없는 공고는 중복 판정이 안 되므로 버림
   const org = c.pbanc_ntrp_nm || c.sprv_inst || c.biz_prch_dprt_nm || "창업진흥원";
   const region = mapRegion(c.supt_regin ?? "", title, org);
-  const category = c.supt_biz_clsfc || "기타";
+  const category = isStageParticipation(title) ? PARTICIPATION_CATEGORY : c.supt_biz_clsfc || "기타";
   const description = c.pbanc_ctnt || null;
   const biz_age = c.biz_enyy?.trim() || null;
   const eligible = isAgeEligible(biz_age, businessYears(profile.founded));
