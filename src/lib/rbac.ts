@@ -1,7 +1,7 @@
 // ============================================================
 // IM-CORE-AUTH: RBAC (Role-Based Access Control) 유틸리티
 //
-// 어드민 역할은 Supabase Auth user.user_metadata.role 필드에 저장합니다.
+// 어드민 역할은 Supabase Auth user.app_metadata.role 필드에 저장합니다 (서버만 수정 가능).
 // 역할: super_admin > manager > viewer
 // ============================================================
 
@@ -17,27 +17,23 @@ const ROLE_PRIORITY: Record<AdminRole, number> = {
   super_admin: 3,
 };
 
+export const ADMIN_ROLES: AdminRole[] = ["super_admin", "manager", "viewer"];
+
 /**
  * Supabase user 객체에서 어드민 역할을 추출합니다.
- * user_metadata.role 필드를 사용하며, 없으면 기본값 'viewer'를 반환합니다.
+ * 반드시 app_metadata.role 사용: user_metadata 는 사용자가 직접 수정할 수 있어 권한 판단에 쓰면 안 됨.
+ * 같은 Auth 를 모델뷰티 회원도 쓰므로, 역할이 없으면 어드민이 아님(null).
  */
-export function getAdminRole(user: { user_metadata?: Record<string, unknown> } | null): AdminRole {
-  if (!user) return "viewer";
-  const role = user.user_metadata?.role;
-  if (role === "super_admin" || role === "manager" || role === "viewer") {
-    return role;
-  }
-  // role 미설정 어드민은 manager로 취급 (기존 계정 하위 호환성)
-  return "manager";
+export function getAdminRole(user: { app_metadata?: Record<string, unknown> } | null): AdminRole | null {
+  const role = user?.app_metadata?.role;
+  return ADMIN_ROLES.includes(role as AdminRole) ? (role as AdminRole) : null;
 }
 
 /**
- * 현재 역할이 요구 최소 역할을 충족하는지 확인합니다.
- * @param currentRole - 현재 사용자의 역할
- * @param requiredRole - 요구되는 최소 역할
+ * 현재 역할이 요구 최소 역할을 충족하는지 확인합니다. 어드민이 아니면(null) 항상 false.
  */
-export function hasRole(currentRole: AdminRole, requiredRole: AdminRole): boolean {
-  return ROLE_PRIORITY[currentRole] >= ROLE_PRIORITY[requiredRole];
+export function hasRole(currentRole: AdminRole | null, requiredRole: AdminRole): boolean {
+  return currentRole !== null && ROLE_PRIORITY[currentRole] >= ROLE_PRIORITY[requiredRole];
 }
 
 /**

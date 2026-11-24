@@ -21,7 +21,7 @@ export default function AdminHeader() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setAdminEmail(user.email ?? "");
-        setAdminRole(getAdminRole(user as any));
+        setAdminRole(getAdminRole(user) ?? "viewer");
       }
     });
   }, []);

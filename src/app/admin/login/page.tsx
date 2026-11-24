@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { getAdminRole } from "@/lib/rbac";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -17,10 +18,18 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
+      setLoading(false);
+      return;
+    }
+
+    // 같은 Auth를 쓰는 모델뷰티 회원 계정은 로그인 즉시 로그아웃 (실제 차단은 proxy.ts에서)
+    if (getAdminRole(data.user) === null) {
+      await supabase.auth.signOut();
+      setError("어드민 권한이 없는 계정입니다.");
       setLoading(false);
       return;
     }

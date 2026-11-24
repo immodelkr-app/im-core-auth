@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getAdminRole, hasRole, forbiddenResponse } from "@/lib/rbac";
+import { getAdminRole, hasRole, forbiddenResponse, ADMIN_ROLES } from "@/lib/rbac";
 import { logAdminAction, getClientIp } from "@/lib/audit";
 
 // GET: 어드민 계정 목록 조회
@@ -19,17 +19,19 @@ export async function GET() {
 
   try {
     // Supabase Auth Admin API로 사용자 목록 조회
-    const { data: { users }, error } = await adminClient.auth.admin.listUsers();
+    // shortcut: 1페이지(최대 1000명)만 조회, Auth 사용자가 1000명 넘으면 페이지 반복으로 바꿀 것
+    const { data: { users }, error } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
     // 필요한 정보만 추출하여 반환 (비밀번호 등 민감 정보 제외)
-    const adminUsers = (users ?? []).map((u) => ({
+    // 같은 Auth에 모델뷰티 회원도 있으므로 어드민 역할이 있는 계정만
+    const adminUsers = (users ?? []).filter((u) => getAdminRole(u) !== null).map((u) => ({
       id: u.id,
       email: u.email,
-      role: u.user_metadata?.role ?? "manager",
+      role: getAdminRole(u),
       created_at: u.created_at,
       last_sign_in_at: u.last_sign_in_at,
       email_confirmed_at: u.email_confirmed_at,
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
       email,
       password,
       email_confirm: true,
-      user_metadata: { role: adminRole },
+      app_metadata: { role: adminRole },
     });
 
     if (error) {
@@ -130,8 +132,18 @@ export async function PATCH(request: Request) {
       );
     }
 
+    if (!ADMIN_ROLES.includes(newRole)) {
+      return NextResponse.json({ success: false, error: "유효하지 않은 역할입니다." }, { status: 400 });
+    }
+
+    // 어드민 계정만 역할 변경 가능 (모델뷰티 회원을 어드민으로 승격하는 것 방지)
+    const { data: target } = await adminClient.auth.admin.getUserById(userId);
+    if (getAdminRole(target.user) === null) {
+      return NextResponse.json({ success: false, error: "어드민 계정이 아닙니다." }, { status: 400 });
+    }
+
     const { error } = await adminClient.auth.admin.updateUserById(userId, {
-      user_metadata: { role: newRole },
+      app_metadata: { role: newRole },
     });
 
     if (error) {
@@ -178,6 +190,12 @@ export async function DELETE(request: Request) {
 
     if (userId === user?.id) {
       return NextResponse.json({ success: false, error: "자신의 계정은 삭제할 수 없습니다." }, { status: 400 });
+    }
+
+    // 어드민 계정만 삭제 가능 (같은 Auth의 모델뷰티 회원 계정 삭제 방지)
+    const { data: target } = await adminClient.auth.admin.getUserById(userId);
+    if (getAdminRole(target.user) === null) {
+      return NextResponse.json({ success: false, error: "어드민 계정이 아닙니다." }, { status: 400 });
     }
 
     const { error } = await adminClient.auth.admin.deleteUser(userId);
