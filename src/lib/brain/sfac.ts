@@ -1,11 +1,12 @@
 // ============================================================
 // 서울문화재단(sfac.or.kr) "공모소식" 게시판(cbIdx=992) 수집
 // 목록은 AJAX POST(ListSfac.do)로만 나옴. viewUrl 등 파라미터를 붙이면 빈 응답이라 최소 파라미터만 보냄.
-// 진행/마감 상태·마감일이 목록에 없음 → 게시 60일 이내만, 마감일은 원문 확인.
+// 진행/마감 상태·마감일이 목록에 없음 → 게시 60일 이내만, 마감일은 상세 본문에서 읽음(deadline.ts).
 // ============================================================
 
 import { calculateMatchScore, isStageParticipation, mapRegion, PARTICIPATION_CATEGORY, type MatchProfile, type NoticeRow } from "./notices";
 import { SKIP } from "./ansanart";
+import { getText } from "./deadline";
 
 const LIST = "https://www.sfac.or.kr/site/SFAC_KOR/ex/bbs/ListSfac.do";
 const VIEW = "https://www.sfac.or.kr/opensquare/notice/support_list.do?cbIdx=992&bcIdx=";
@@ -16,6 +17,14 @@ function decodeHtml(s: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** 상세 페이지는 껍데기라 본문은 ViewSfac.do POST로 받음 (마감일 추출용) */
+export const sfacBody = (bcIdx: string) =>
+  getText("https://www.sfac.or.kr/site/SFAC_KOR/ex/bbs/ViewSfac.do", {
+    method: "POST",
+    headers: { "User-Agent": "Mozilla/5.0 (imBrain notice collector)", "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ cbIdx: "992", bcIdx }),
+  });
 
 export type SfacItem = { id: string; date: string; title: string };
 

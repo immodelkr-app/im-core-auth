@@ -7,7 +7,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchKstartup, type MatchProfile, type NoticeRow } from "./notices";
 import { fetchAnsanArt } from "./ansanart";
 import { fetchGgcf } from "./ggcf";
-import { fetchSfac } from "./sfac";
+import { fetchSfac, sfacBody } from "./sfac";
+import { fillDeadlines, getText } from "./deadline";
 import { fetchYicf } from "./yicf";
 import { fetchSwcf } from "./swcf";
 
@@ -40,11 +41,16 @@ export async function collectNotices(supabase: SupabaseClient): Promise<CollectR
   };
   const counts = { kstartup: take(ks, "K-Startup"), ansanart: take(aa, "안산문화재단"), ggcf: take(gg, "경기문화재단"), sfac: take(sf, "서울문화재단"), yicf: take(yi, "용인문화재단"), swcf: take(sw, "수원문화재단") };
 
-  if (rows.length > 0) {
+  // 재단 게시판 공고는 상세 본문에서 마감일을 읽어 채움
+  const boardRows = rows.filter((r) => BOARD_SOURCES.includes(r.source));
+  const withDeadline = await fillDeadlines(boardRows, (r) => (r.source === "sfac" ? sfacBody(r.external_id) : getText(r.url!)));
+  const allRows = [...rows.filter((r) => !BOARD_SOURCES.includes(r.source)), ...withDeadline];
+
+  if (allRows.length > 0) {
     const collected_at = new Date().toISOString();
     const { error } = await supabase
       .from("brain_notices")
-      .upsert(rows.map((r) => ({ ...r, collected_at })), { onConflict: "source,external_id" });
+      .upsert(allRows.map((r) => ({ ...r, collected_at })), { onConflict: "source,external_id" });
     if (error) throw new Error(`저장 실패: ${error.message}`);
   }
 
