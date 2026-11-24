@@ -1,4 +1,4 @@
-// 실행: node --experimental-strip-types scripts/brain-notices.check.mjs  (KSTARTUP_API_KEY 있으면 실제 API도 확인)
+// 실행: npx -y tsx scripts/brain-notices.check.mjs  (KSTARTUP_API_KEY 있으면 K-Startup, LIVE=1 이면 안산문화재단 실제 사이트도 확인)
 import assert from "node:assert/strict";
 import { formatDate, mapRegion, parseKstartupItems, kstartupToRow, fetchKstartup, isAgeEligible, businessYears, calculateMatchScore } from "../src/lib/brain/notices.ts";
 
@@ -41,4 +41,29 @@ if (process.env.KSTARTUP_API_KEY) {
   const ok = rows.filter((r) => r.eligible !== false);
   console.log("live OK:", rows.length, "rows,", ok.length, "eligible. top 8:");
   for (const r of ok.sort((a, b) => b.match_score - a.match_score).slice(0, 8)) console.log(" ", r.match_score, r.category, r.region, r.title.slice(0, 40));
+}
+
+// ── 안산문화재단 + 문자 알림 ──
+const { parseAnsanArtList, ansanArtToRow, fetchAnsanArt } = await import("../src/lib/brain/ansanart.ts");
+const { buildAlertText, alertPhones } = await import("../src/lib/brain/alerts.ts");
+const listHtml = `<tr><td><a href="view.do?article_seq=605&amp;cpage=1"><span class="m_cat">[공고] </span>
+  2027 안산 예술인 창작지원 공모 &amp; 모집</a><ul><li><b>작성일</b>2026-11-12</li></ul></td></tr>
+  <tr><td><a href="view.do?article_seq=604&amp;cpage=1"><span class="m_cat">[공고] </span>안산리서치 공모 최종 선정결과 발표</a><ul><li><b>작성일</b>2026-11-11</li></ul></td></tr>`;
+const parsed = parseAnsanArtList(listHtml);
+assert.deepEqual(parsed.map((p) => p.seq), ["605", "604"]);
+assert.equal(parsed[0].title, "2027 안산 예술인 창작지원 공모 & 모집");
+assert.equal(ansanArtToRow(parsed[1]), null); // 결과 발표는 제외
+const aRow = ansanArtToRow(parsed[0], profile);
+assert.equal(aRow.region, "안산");
+assert.ok(aRow.url.endsWith("article_seq=605"));
+const sms = buildAlertText(Array.from({ length: 7 }, (_, i) => ({ id: String(i), title: `공고${i}`, org: "안산문화재단", deadline: null, match_score: 80, url: "https://x" })));
+assert.ok(sms.includes("새 공고 7건") && sms.includes("외 2건"));
+process.env.BRAIN_ALERT_PHONES = "010-1234-5678, 02-123-4567,01098765432";
+assert.deepEqual(alertPhones(), ["01012345678", "01098765432"]);
+console.log("ansanart/alert OK");
+
+if (process.env.LIVE) {
+  const rows = await fetchAnsanArt(profile);
+  console.log("ansanart live:", rows.length, "rows");
+  for (const r of rows) console.log(" ", r.match_score, r.apply_start, r.category, r.title.slice(0, 50));
 }

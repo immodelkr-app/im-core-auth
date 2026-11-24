@@ -27,7 +27,7 @@ const INPUT = "w-full px-3 py-2 rounded-xl text-sm outline-none border border-gr
 
 /** 접수 상태는 저장하지 않고 마감일로 계산 (KST 기준 오늘) */
 function statusOf(deadline: string | null, today: string): { label: string; bg: string; text: string } {
-  if (!deadline) return { label: "상시", bg: "rgba(59,130,246,0.12)", text: "#2563eb" };
+  if (!deadline) return { label: "마감일 원문 확인", bg: "rgba(59,130,246,0.12)", text: "#2563eb" };
   if (deadline < today) return { label: "마감", bg: "rgba(107,114,128,0.12)", text: "#4b5563" };
   const days = (new Date(deadline).getTime() - new Date(today).getTime()) / 86400000;
   if (days <= 7) return { label: `마감 D-${days}`, bg: "rgba(239,68,68,0.12)", text: "#dc2626" };
@@ -90,7 +90,7 @@ export default function BrainNoticesPage() {
       const json = await fetch("/api/admin/brain/notices", { method: "POST" }).then((r) => r.json());
       if (!json.success) throw new Error(json.error);
       await load();
-      setMessage({ ok: true, text: `K-Startup 모집중 공고 ${json.count}건을 수집했습니다.` });
+      setMessage({ ok: json.errors.length === 0, text: `K-Startup ${json.kstartup}건 · 안산문화재단 ${json.ansanart}건 수집${json.errors.length ? ` (일부 실패: ${json.errors.join(" / ")})` : ""}` });
     } catch (e) {
       setMessage({ ok: false, text: `수집 실패: ${(e as Error).message}` });
     } finally {
@@ -123,7 +123,7 @@ export default function BrainNoticesPage() {
           <Link href="/admin/brain" style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>← imBrain</Link>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--color-text-primary)", margin: "4px 0 0" }}>🔎 지원사업 공고 검색</h1>
           <p style={{ color: "var(--color-text-secondary)", marginTop: 4, fontSize: 14 }}>
-            K-Startup 모집중 공고 · 글로벌아임 매칭률 순
+            K-Startup 모집중 공고 + 안산문화재단 공고사항 · 글로벌아임 매칭률 순
             {lastCollected && ` · 마지막 수집 ${new Date(lastCollected).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`}
           </p>
         </div>
@@ -191,7 +191,7 @@ export default function BrainNoticesPage() {
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
                   <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 4 }}>
-                    {n.org} · 마감 {n.deadline ?? "상시"}
+                    {n.org} · 마감 {n.deadline ?? "원문 확인"}
                   </div>
                 </div>
               </button>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminRole, hasRole, forbiddenResponse } from "@/lib/rbac";
-import { fetchKstartup, type MatchProfile } from "@/lib/brain/notices";
+import { collectNotices } from "@/lib/brain/collect";
 
 // GET: 저장된 공고 목록 (마감일 순)
 export async function GET() {
@@ -27,29 +27,14 @@ export async function POST() {
     return forbiddenResponse("공고 수집은 매니저 이상만 가능합니다.");
   }
 
-  const apiKey = process.env.KSTARTUP_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ success: false, error: "KSTARTUP_API_KEY 환경 변수가 설정되지 않았습니다." }, { status: 500 });
-  }
-
-  const supabase = createAdminClient();
-  // 매칭 점수는 저장된 사업자 프로필(개업일·탐색 지역·업종) 기준 — 프로필을 바꾸면 다시 수집해야 반영됨
-  const { data: profileRow } = await supabase.from("brain_company_profile").select("profile").eq("id", 1).maybeSingle();
-
-  let rows;
   try {
-    rows = await fetchKstartup(apiKey, (profileRow?.profile ?? {}) as MatchProfile);
+    const r = await collectNotices(createAdminClient());
+    if (r.kstartup + r.ansanart === 0 && r.errors.length > 0) {
+      return NextResponse.json({ success: false, error: r.errors.join(" / ") }, { status: 502 });
+    }
+    // 수집만 하고 문자는 보내지 않음 (문자는 매일 자동 수집 때만)
+    return NextResponse.json({ success: true, count: r.kstartup + r.ansanart, ...r });
   } catch (e) {
-    return NextResponse.json({ success: false, error: (e as Error).message }, { status: 502 });
+    return NextResponse.json({ success: false, error: (e as Error).message }, { status: 500 });
   }
-
-  const collected_at = new Date().toISOString();
-  const { error } = await supabase
-    .from("brain_notices")
-    .upsert(rows.map((r) => ({ ...r, collected_at })), { onConflict: "source,external_id" });
-
-  if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-  return NextResponse.json({ success: true, count: rows.length });
 }
